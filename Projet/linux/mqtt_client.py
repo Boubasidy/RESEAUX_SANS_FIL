@@ -9,18 +9,17 @@ import os
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-import paho.mqtt.client as mqtt
 
 
 BLOCK_SIZE = 16
 MESSAGE_PREFIX = b'INSARISF1'
 KEYUPDATE_PREFIX = b'KEYUPDATE'
-DEFAULT_BROKER = 'p-fb.net'
+DEFAULT_BROKER = 'serveur.iot.com'
 DEFAULT_PORT = 1883
-DEFAULT_USER = 'insa'
-DEFAULT_PASSWORD = 'insa'
-DEFAULT_DATA_TOPIC = 'insa/lora/data'
-DEFAULT_COMMAND_TOPIC = 'insa/lora/command/passerelle'
+DEFAULT_USER = 'esp32'
+DEFAULT_PASSWORD = 'esp32'
+DEFAULT_DATA_TOPIC = 'echange'
+DEFAULT_COMMAND_TOPIC = 'echange/command/passerelle'
 DEFAULT_AES_KEY = b'0123456789abcdef'
 DEFAULT_HMAC_KEY = b'abcd'
 
@@ -109,8 +108,10 @@ def verify_key_update(command_packet, current_hmac_key):
 
 
 def make_mqtt_client(args):
+    import paho.mqtt.client as mqtt
+
     try:
-        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id='linux-lora-client')
+        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, client_id='linux-lora-client')
     except AttributeError:
         client = mqtt.Client(client_id='linux-lora-client')
     client.username_pw_set(args.mqtt_user, args.mqtt_password)
@@ -119,20 +120,28 @@ def make_mqtt_client(args):
 
 
 def on_message(client, userdata, message, args):
+    try:
+        raw_payload = message.payload.decode()
+    except Exception:
+        raw_payload = message.payload.hex()
+    print('MQTT raw:', raw_payload, flush=True)
+
     valid, node_id, plaintext = unpack_message(message.payload, args.aes_key, args.hmac_key)
 
     if valid:
         data = plaintext.decode()
-        print('[OK] {} {}'.format(node_id, data))
+        print('[OK] {} {}'.format(node_id, data), flush=True)
     else:
-        print('[BAD] message rejected')
+        print('[BAD] message rejected', flush=True)
+        print('raw:', raw_payload, flush=True)
 
 
 def listen(args):
     client = make_mqtt_client(args)
-    client.subscribe(args.data_topic)
     client.on_message = lambda client, userdata, message: on_message(client, userdata, message, args)
-    print('Listening on {} topic {}'.format(args.broker, args.data_topic))
+    client.subscribe(args.data_topic)
+    print('Connected to {}:{}, subscribed to {}'.format(args.broker, args.port, args.data_topic), flush=True)
+    print('Listening on {} topic {}'.format(args.broker, args.data_topic), flush=True)
     client.loop_forever()
 
 
@@ -145,31 +154,46 @@ def update_keys(args):
     print('Published secure key update on {}'.format(args.command_topic))
 
 
+def publish_test(args):
+    packet = pack_message(args.node_id, args.message.encode(), args.aes_key, args.hmac_key)
+    client = make_mqtt_client(args)
+    info = client.publish(args.data_topic, packet)
+    info.wait_for_publish()
+    client.disconnect()
+    print('Published secure test message on {}'.format(args.data_topic))
+
+
 def parse_bytes(value):
     return value.encode()
 
 
 def build_arg_parser():
-    parser = argparse.ArgumentParser(description='Client Linux MQTT/LoRa sécurisé')
-    parser.add_argument('--broker', default=DEFAULT_BROKER)
-    parser.add_argument('--port', type=int, default=DEFAULT_PORT)
-    parser.add_argument('--mqtt-user', default=DEFAULT_USER)
-    parser.add_argument('--mqtt-password', default=DEFAULT_PASSWORD)
-    parser.add_argument('--data-topic', default=DEFAULT_DATA_TOPIC)
-    parser.add_argument('--command-topic', default=DEFAULT_COMMAND_TOPIC)
-    parser.add_argument('--aes-key', type=parse_bytes, default=DEFAULT_AES_KEY)
-    parser.add_argument('--hmac-key', type=parse_bytes, default=DEFAULT_HMAC_KEY)
+    parent = argparse.ArgumentParser(add_help=False)
+    parent.add_argument('--broker', default=DEFAULT_BROKER)
+    parent.add_argument('--port', type=int, default=DEFAULT_PORT)
+    parent.add_argument('--mqtt-user', default=DEFAULT_USER)
+    parent.add_argument('--mqtt-password', default=DEFAULT_PASSWORD)
+    parent.add_argument('--data-topic', default=DEFAULT_DATA_TOPIC)
+    parent.add_argument('--command-topic', default=DEFAULT_COMMAND_TOPIC)
+    parent.add_argument('--aes-key', type=parse_bytes, default=DEFAULT_AES_KEY)
+    parent.add_argument('--hmac-key', type=parse_bytes, default=DEFAULT_HMAC_KEY)
 
+    parser = argparse.ArgumentParser(description='Client Linux MQTT/LoRa sécurisé')
     subparsers = parser.add_subparsers(dest='command', required=True)
 
-    listen_parser = subparsers.add_parser('listen', help='écouter et vérifier les messages LoRa publiés en MQTT')
+    listen_parser = subparsers.add_parser('listen', parents=[parent], help='écouter et vérifier les messages LoRa publiés en MQTT')
     listen_parser.set_defaults(func=listen)
 
-    update_parser = subparsers.add_parser('update-keys', help='mettre à jour les clés de la passerelle et du capteur')
+    update_parser = subparsers.add_parser('update-keys', parents=[parent], help='mettre à jour les clés de la passerelle et du capteur')
     update_parser.add_argument('--new-aes-key', type=parse_bytes, default=b'0123456789abcdef')
     update_parser.add_argument('--new-hmac-key', type=parse_bytes, default=b'abcd')
     update_parser.add_argument('--current-hmac-key', type=parse_bytes, default=DEFAULT_HMAC_KEY)
     update_parser.set_defaults(func=update_keys)
+
+    test_parser = subparsers.add_parser('publish-test', parents=[parent], help='publier un message sécurisé de test sur le topic MQTT')
+    test_parser.add_argument('--node-id', default='capteur1')
+    test_parser.add_argument('--message', default='coucou')
+    test_parser.set_defaults(func=publish_test)
 
     return parser
 

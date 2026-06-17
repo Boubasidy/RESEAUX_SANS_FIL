@@ -7,8 +7,8 @@ MQTT_SERVER = 'p-fb.net'
 MQTT_PORT = 1883
 MQTT_USER = 'insa'
 MQTT_PASSWORD = 'insa'
-MQTT_DATA_TOPIC = b'insa/lora/data'
-MQTT_COMMAND_TOPIC = b'insa/lora/command/passerelle'
+MQTT_DATA_TOPIC = b'echange'
+MQTT_COMMAND_TOPIC = b'echange/command/passerelle'
 
 NODE_ID = 'passerelle1'
 AES_KEY = b'0123456789abcdef'
