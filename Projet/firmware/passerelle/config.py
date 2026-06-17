@@ -1,7 +1,7 @@
 from machine import Pin, SoftSPI
 
 WIFI_SSID = 'INSA_RiSF'
-WIFI_PASSWORD = 'insa032023'
+WIFI_PASSWORD = 'insa2026'
 
 MQTT_SERVER = 'serveur.iot.com'
 MQTT_PORT = 1883

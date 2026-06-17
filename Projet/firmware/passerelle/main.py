@@ -37,7 +37,15 @@ def init_lora():
 
 def connect_wifi():
     wlan = network.WLAN(network.STA_IF)
+    
+    # --- CORRECTION : Nettoyage préventif de l'état interne ---
+    if wlan.active():
+        wlan.active(False)
+        sleep(0.5) # Laisse le temps au driver de libérer le matériel
+    
     wlan.active(True)
+    sleep(0.5) # Laisse la puce se réveiller proprement
+    # ---------------------------------------------------------
 
     if wlan.isconnected():
         print('WiFi connected')
@@ -45,7 +53,13 @@ def connect_wifi():
         return True
 
     print('Connecting WiFi {}'.format(WIFI_SSID))
-    wlan.connect(WIFI_SSID, WIFI_PASSWORD)
+    
+    try:
+        wlan.connect(WIFI_SSID, WIFI_PASSWORD)
+    except OSError as e:
+        # Si l'erreur persiste malgré tout, on tente un soft-reboot matériel
+        print("WiFi HW Error: {}. Retrying...".format(e))
+        machine.reset() 
 
     for _ in range(30):
         if wlan.isconnected():
@@ -182,3 +196,4 @@ def run():
 
 if __name__ == '__main__':
     run()
+
