@@ -3,11 +3,11 @@ from machine import Pin, SoftSPI
 WIFI_SSID = 'INSA_RiSF'
 WIFI_PASSWORD = 'insa032023'
 
-MQTT_SERVER = 'p-fb.net'
+MQTT_SERVER = 'serveur.iot.com'
 MQTT_PORT = 1883
-MQTT_USER = 'insa'
-MQTT_PASSWORD = 'insa'
-MQTT_DATA_TOPIC = b'echange'
+MQTT_USER = 'esp32'
+MQTT_PASSWORD = 'esp32'
+MQTT_DATA_TOPIC = b'LamBouba'
 MQTT_COMMAND_TOPIC = b'echange/command/passerelle'
 
 NODE_ID = 'passerelle1'
