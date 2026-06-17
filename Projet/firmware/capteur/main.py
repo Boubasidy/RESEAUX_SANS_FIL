@@ -1,3 +1,6 @@
+import os
+import sys
+os.chdir("/capteur")
 from machine import Pin, SoftSPI
 from time import sleep
 import machine
