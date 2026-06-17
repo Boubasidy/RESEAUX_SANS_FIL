@@ -209,7 +209,9 @@ class SX127x:
 
         if isinstance(msg, str):
             message = msg.encode()
-            
+        else:
+            message = msg
+  
         self.write(message)
 
         self.end_packet()

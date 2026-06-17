@@ -111,9 +111,7 @@ def set_screen(lines):
 
 
 def send_key_update(command_packet):
-    # Envoi direct via le LoRa aux capteurs aux alentours
-    lora.write(command_packet)
-    # Très important : après un envoi (.println), on doit remettre la passerelle en écoute
+    lora.println(command_packet)
     lora.receive()
 
 

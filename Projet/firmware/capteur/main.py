@@ -124,13 +124,9 @@ def run():
         screen[2] = 'counter {}'.format(counter)
         write_screen(oled, screen)
 
-        # Fenêtre d'écoute des clés (2 secondes d'ouverture)
+        # Fenêtre d'écoute des clés (6 secondes d'ouverture)
         print("Enter listening")
-        listen_key_update(lora, oled, screen, timeout_ms=5000)
+        listen_key_update(lora, oled, screen, timeout_ms=6000)
         
-        # Intervalle de repos avant la prochaine mesure (5 secondes)
-        sleep(1)
-
-
 if __name__ == '__main__':
     run()
