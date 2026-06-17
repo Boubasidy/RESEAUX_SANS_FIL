@@ -27,12 +27,56 @@ def on_message(client, userdata, message, args, shell=None):
     except Exception:
         raw_payload = message.payload.hex()
     
+    # Intercepter les messages système de la passerelle en clair
+    SYSTEM_MESSAGES = ("keys_updated", "keys_rejected", "nocheck_updated")
+    if raw_payload in SYSTEM_MESSAGES:
+        out = f'\n[SYSTEM] Passerelle: {raw_payload}'
+        if shell:
+            print_async(out, shell)
+        else:
+            print(out)
+        return
+
     out = f'\n[MQTT raw] {raw_payload}'
 
+    pending = getattr(args, 'pending_update', False)
+    
     valid, node_id, plaintext = unpack_message(message.payload, args.aes_key, args.hmac_key)
 
-    if valid:
-        data = plaintext.decode()
+    if pending and not valid:
+        # Essai avec les anciennes clés (Trial Decryption)
+        fb_aes, fb_hmac = args.fallback_keys
+        fb_valid, fb_node_id, fb_plaintext = unpack_message(message.payload, fb_aes, fb_hmac)
+        
+        if fb_valid:
+            args.message_count += 1
+            data = fb_plaintext.decode(errors='ignore')
+            out += f'\n[BAD_KEYS] (Old Keys Valid) {fb_node_id} {data} (Message {args.message_count}/2)'
+            
+            if data == "KEYS_FAILED" or args.message_count >= 2:
+                out += '\n[ROLLBACK] Annulation de la mise à jour des clés !'
+                # Rollback local
+                args.aes_key, args.hmac_key = fb_aes, fb_hmac
+                args.pending_update = False
+                
+                # Rollback passerelle
+                from security import build_key_update
+                command = build_key_update(fb_aes, fb_hmac, args.active_keys[1])
+                client.publish(args.command_topic, command)
+        else:
+            out += f'\n[BAD] message rejected\nraw: {raw_payload}'
+            
+    elif pending and valid:
+        data = plaintext.decode(errors='ignore')
+        if data == "KEYS_OK" or data != "KEYS_FAILED":
+            out += f'\n[OK] {node_id} {data}'
+            out += '\n[CONFIRMED] Mise à jour des clés validée par le capteur.'
+            args.pending_update = False
+            delattr(args, 'fallback_keys')
+            delattr(args, 'active_keys')
+            delattr(args, 'message_count')
+    elif valid:
+        data = plaintext.decode(errors='ignore')
         out += f'\n[OK] {node_id} {data}'
     else:
         out += f'\n[BAD] message rejected\nraw: {raw_payload}'

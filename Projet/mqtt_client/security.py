@@ -6,7 +6,7 @@ import os
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
-from config import BLOCK_SIZE, MESSAGE_PREFIX, KEYUPDATE_PREFIX
+from config import BLOCK_SIZE, MESSAGE_PREFIX, KEYUPDATE_PREFIX, NOCHECK_PREFIX
 
 
 def pad(data):
@@ -90,3 +90,11 @@ def verify_key_update(command_packet, current_hmac_key):
         return True, bytes.fromhex(parts[2].decode()), bytes.fromhex(parts[3].decode())
     except Exception:
         return False, b'', b''
+
+
+def build_nocheck_command(state_bool, current_hmac_key):
+    nonce = os.urandom(8)
+    state = b'1' if state_bool else b'0'
+    command = NOCHECK_PREFIX + b'|' + nonce + b'|' + state
+    mac = hmac_sha1(current_hmac_key, command)
+    return command + b'|' + mac.hex().encode()

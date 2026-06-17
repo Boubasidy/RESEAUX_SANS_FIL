@@ -16,6 +16,7 @@ AES_CBC = 2
 BLOCK_SIZE = 16
 MESSAGE_PREFIX = b'INSARISF1'
 KEYUPDATE_PREFIX = b'KEYUPDATE'
+NOCHECK_PREFIX = b'NOCHECK'
 
 
 def random_bytes(size):
@@ -138,3 +139,22 @@ def verify_key_update(command_packet, current_hmac_key):
     except Exception as e:
         print("Error in verify:", e)
         return False, b'', b''
+
+
+def verify_nocheck_command(command_packet, current_hmac_key):
+    try:
+        command, mac_hex = command_packet.rsplit(b'|', 1)
+        expected = hmac_sha1(current_hmac_key, command)
+        received_bytes = ubinascii.unhexlify(mac_hex)
+        
+        if not equal_bytes(received_bytes, expected):
+            return False, False
+            
+        parts = command.split(b'|')
+        if len(parts) != 3 or parts[0] != NOCHECK_PREFIX:
+            return False, False
+            
+        state_bool = True if parts[2] == b'1' else False
+        return True, state_bool
+    except Exception:
+        return False, False

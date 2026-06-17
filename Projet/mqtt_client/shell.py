@@ -2,7 +2,7 @@ import cmd
 import sys
 import readline
 
-from security import build_key_update, pack_message
+from security import build_key_update, pack_message, build_nocheck_command
 
 
 def print_async(text, shell):
@@ -60,10 +60,15 @@ class MqttShell(cmd.Cmd):
         info.wait_for_publish()
         print(f"Commande de mise à jour des clés publiée sur {self.args.command_topic}")
         
-        # Mettre à jour les clés localement pour continuer l'écoute
+        # Passer en mode PENDING_UPDATE
+        self.args.pending_update = True
+        self.args.fallback_keys = (self.args.aes_key, self.args.hmac_key)
+        self.args.active_keys = (new_aes_key, new_hmac_key)
+        self.args.message_count = 0
+        
         self.args.aes_key = new_aes_key
         self.args.hmac_key = new_hmac_key
-        print("Clés locales mises à jour.")
+        print("En attente de confirmation du capteur (mode double-décodage activé).")
 
     def do_publish(self, arg):
         """Publier un message de test: publish <node_id> <message>"""
@@ -79,6 +84,19 @@ class MqttShell(cmd.Cmd):
         info = self.client.publish(self.args.data_topic, packet)
         info.wait_for_publish()
         print(f"Message de test sécurisé publié sur {self.args.data_topic}")
+
+    def do_nocheck(self, arg):
+        """Activer/désactiver le mode no-check sur la passerelle: nocheck <on|off>"""
+        arg = arg.strip().lower()
+        if arg not in ('on', 'off'):
+            print("Usage: nocheck <on|off>")
+            return
+            
+        state = (arg == 'on')
+        command = build_nocheck_command(state, self.args.hmac_key)
+        info = self.client.publish(self.args.command_topic, command)
+        info.wait_for_publish()
+        print(f"Commande no-check={arg} publiée sur {self.args.command_topic}")
 
     def do_status(self, arg):
         """Afficher le statut actuel: status"""

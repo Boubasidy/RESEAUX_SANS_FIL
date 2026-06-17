@@ -81,6 +81,13 @@ def listen_key_update(lora, oled, screen, timeout_ms=2000):
         screen[1] = NODE_ID
         screen[2] = 'updated'
         write_screen(oled, screen)
+        
+        # Envoi explicite de l'acquittement KEYS_OK avec les nouvelles clés
+        lora.sleep()
+        ack_packet = pack_message(NODE_ID, b"KEYS_OK", AES_KEY, HMAC_KEY)
+        lora.println(ack_packet)
+        print("[TX] ACK KEYS_OK envoyé")
+        
         lora.sleep()
         return True
     
@@ -89,6 +96,13 @@ def listen_key_update(lora, oled, screen, timeout_ms=2000):
     screen[1] = NODE_ID
     screen[2] = 'Rejected!'
     write_screen(oled, screen)
+    
+    # Envoi explicite de l'acquittement d'erreur avec les anciennes clés
+    lora.sleep()
+    nack_packet = pack_message(NODE_ID, b"KEYS_FAILED", AES_KEY, HMAC_KEY)
+    lora.println(nack_packet)
+    print("[TX] NACK KEYS_FAILED envoyé")
+    
     lora.sleep()
     return False
 

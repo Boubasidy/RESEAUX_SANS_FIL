@@ -15,6 +15,7 @@ from umqttsimple import MQTTClient
 
 
 mqtt_client = None
+no_check_mode = False
 
 
 def init_lora():
@@ -118,6 +119,7 @@ def send_key_update(command_packet):
 def on_mqtt_message(topic, msg):
     global AES_KEY
     global HMAC_KEY
+    global no_check_mode
 
     # 1. On force le topic reçu à devenir une chaîne de caractères (str)
     actual_topic = topic.decode() if type(topic) == bytes else topic
@@ -127,6 +129,18 @@ def on_mqtt_message(topic, msg):
 
     # 3. La comparaison se fait maintenant entre deux 'str' parfaits !
     if actual_topic != config_topic:
+        return
+
+    # Vérification de commande NOCHECK
+    if msg.startswith(NOCHECK_PREFIX):
+        ok, state = verify_nocheck_command(msg, HMAC_KEY)
+        if ok:
+            no_check_mode = state
+            print("[MQTT] Mode no-check mis a jour:", no_check_mode)
+            set_screen(['NO CHECK', 'ON' if state else 'OFF'])
+            mqtt_client.publish(MQTT_DATA_TOPIC, b"nocheck_updated")
+        else:
+            print("[MQTT] Mode no-check refuse: HMAC invalide")
         return
 
     print("[MQTT] Ordre de Key Update reçu.")
@@ -193,16 +207,24 @@ def run():
             rssi = lora.packet_rssi()
             snr = lora.packet_snr()
             mqtt_client.publish(MQTT_DATA_TOPIC, packet)
-            ok, node_id, plaintext = unpack_message(packet, AES_KEY, HMAC_KEY)
-            if ok:
-                screen[0] = 'RX {}'.format(node_id)
-                screen[1] = plaintext.decode()[:16]
+            
+            if no_check_mode:
+                screen[0] = 'RX RAW'
+                screen[1] = packet[:16].decode() if type(packet) == bytes else packet[:16]
                 screen[2] = 'RSSI {}'.format(rssi)
                 screen[3] = 'SNR {}'.format(snr)
-                screen[4] = 'OK'
+                screen[4] = 'NO-CHK'
             else:
-                screen[0] = 'RX BAD'
-                screen[4] = 'HMAC ERR'
+                ok, node_id, plaintext = unpack_message(packet, AES_KEY, HMAC_KEY)
+                if ok:
+                    screen[0] = 'RX {}'.format(node_id)
+                    screen[1] = plaintext.decode()[:16]
+                    screen[2] = 'RSSI {}'.format(rssi)
+                    screen[3] = 'SNR {}'.format(snr)
+                    screen[4] = 'OK'
+                else:
+                    screen[0] = 'RX BAD'
+                    screen[4] = 'HMAC ERR'
             write_screen(oled, screen)
 
             # CORRECTION C : Très important, on relance l'écoute du module LoRa
