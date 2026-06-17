@@ -28,24 +28,27 @@ def init_lora():
         mosi=Pin(device_config['mosi'], Pin.OUT, Pin.PULL_UP),
         miso=Pin(device_config['miso'], Pin.IN, Pin.PULL_UP)
     )
-    return SX127x(
+    # Initialisation du modem
+    modem = SX127x(
         device_spi,
         pins=device_config,
         parameters=lora_parameters
     )
+    # Force le modem en mode écoute LoRa dès le démarrage
+    modem.receive()
+    return modem
 
 
 def connect_wifi():
     wlan = network.WLAN(network.STA_IF)
     
-    # --- CORRECTION : Nettoyage préventif de l'état interne ---
+    # Nettoyage préventif de l'état interne de la puce Wi-Fi
     if wlan.active():
         wlan.active(False)
-        sleep(0.5) # Laisse le temps au driver de libérer le matériel
+        sleep(0.5) 
     
     wlan.active(True)
-    sleep(0.5) # Laisse la puce se réveiller proprement
-    # ---------------------------------------------------------
+    sleep(0.5) 
 
     if wlan.isconnected():
         print('WiFi connected')
@@ -57,7 +60,6 @@ def connect_wifi():
     try:
         wlan.connect(WIFI_SSID, WIFI_PASSWORD)
     except OSError as e:
-        # Si l'erreur persiste malgré tout, on tente un soft-reboot matériel
         print("WiFi HW Error: {}. Retrying...".format(e))
         machine.reset() 
 
@@ -109,34 +111,55 @@ def set_screen(lines):
 
 
 def send_key_update(command_packet):
-    lora.println(command_packet.decode())
+    # Envoi direct via le LoRa aux capteurs aux alentours
+    lora.write(command_packet)
+    # Très important : après un envoi (.println), on doit remettre la passerelle en écoute
+    lora.receive()
 
 
 def on_mqtt_message(topic, msg):
     global AES_KEY
     global HMAC_KEY
 
-    if topic != MQTT_COMMAND_TOPIC:
+    # 1. On force le topic reçu à devenir une chaîne de caractères (str)
+    actual_topic = topic.decode() if type(topic) == bytes else topic
+    
+    # 2. On force AUSSI le topic de configuration à devenir une chaîne (str)
+    config_topic = MQTT_COMMAND_TOPIC.decode() if type(MQTT_COMMAND_TOPIC) == bytes else MQTT_COMMAND_TOPIC
+
+    # 3. La comparaison se fait maintenant entre deux 'str' parfaits !
+    if actual_topic != config_topic:
         return
 
+    print("[MQTT] Ordre de Key Update reçu.")
     ok, new_aes_key, new_hmac_key = verify_key_update(msg, HMAC_KEY)
 
     if ok:
         AES_KEY = new_aes_key
         HMAC_KEY = new_hmac_key
-        publish_status(MQTT_DATA_TOPIC, 'keys_updated', True)
+        mqtt_client.publish(MQTT_DATA_TOPIC, b"keys_updated")
         if 'lora' in globals():
             send_key_update(msg)
+            lora.receive()
         set_screen(['KEYS OK', NODE_ID, 'updated'])
+        print("[REKEY] Cles mises a jour avec succes et relayees.")
     else:
-        publish_status(MQTT_DATA_TOPIC, 'keys_rejected', False)
+        mqtt_client.publish(MQTT_DATA_TOPIC, b"keys_rejected")
         set_screen(['KEYS BAD', NODE_ID])
-
+        
+        print("[REKEY] Echec : HMAC invalide.")
 
 def publish_lora_message(node_id, plaintext, rssi, snr, secure):
+    # Si le message n'a pas pu être déchiffré (secure=False), plaintext est un objet bytes brut.
+    # On le décode proprement ou on l'affiche sous forme safe pour éviter les crashs JSON.
+    try:
+        data_str = plaintext.decode() if type(plaintext) == bytes else str(plaintext)
+    except Exception:
+        data_str = str(plaintext)
+
     payload = ujson.dumps({
         'node': node_id,
-        'data': plaintext.decode(),
+        'data': data_str,
         'rssi': rssi,
         'snr': snr,
         'secure': secure
@@ -153,7 +176,6 @@ def run():
         return
 
     connect_mqtt()
-
     lora = init_lora()
     oled, screen = init_oled()
 
@@ -169,31 +191,29 @@ def run():
             connect_mqtt()
 
         if lora.received_packet():
-            packet = lora.read_payload()
+            packet = lora.read_payload() # C'est la chaîne Base64 du capteur
             rssi = lora.packet_rssi()
             snr = lora.packet_snr()
+            mqtt_client.publish(MQTT_DATA_TOPIC, packet)
             ok, node_id, plaintext = unpack_message(packet, AES_KEY, HMAC_KEY)
-
             if ok:
-                publish_lora_message(node_id, plaintext, rssi, snr, True)
                 screen[0] = 'RX {}'.format(node_id)
                 screen[1] = plaintext.decode()[:16]
                 screen[2] = 'RSSI {}'.format(rssi)
                 screen[3] = 'SNR {}'.format(snr)
                 screen[4] = 'OK'
             else:
-                publish_lora_message(node_id, packet, rssi, snr, False)
                 screen[0] = 'RX BAD'
-                screen[1] = packet.decode()[:16]
-                screen[2] = 'RSSI {}'.format(rssi)
-                screen[3] = 'SNR {}'.format(snr)
-                screen[4] = 'HMAC'
-
+                screen[4] = 'HMAC ERR'
             write_screen(oled, screen)
 
-        sleep(0.2)
+            # CORRECTION C : Très important, on relance l'écoute du module LoRa
+            lora.receive()
+
+        sleep(0.1)
 
 
 if __name__ == '__main__':
     run()
+
 

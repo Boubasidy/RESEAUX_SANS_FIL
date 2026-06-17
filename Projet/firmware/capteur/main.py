@@ -2,7 +2,7 @@ import os
 import sys
 os.chdir("/capteur")
 from machine import Pin, SoftSPI
-from time import sleep
+from time import sleep, ticks_ms, ticks_diff
 import machine
 import ujson
 
@@ -37,35 +37,59 @@ def build_payload(counter):
         'type': 'sensor',
         'counter': counter,
         'temperature': value,
-        'battery': 90 - counter
+        'battery': max(0, 90 - counter)
     })
 
 
-def listen_key_update(lora, oled, screen):
+def listen_key_update(lora, oled, screen, timeout_ms=2000):
     global AES_KEY
     global HMAC_KEY
 
+    # Passage explicite en mode réception active
     lora.receive()
-    sleep(1)
+    
+    start_time = ticks_ms()
+    packet_detected = False
 
-    if not lora.received_packet():
+    # Attente active non-bloquante du paquet (évite le sleep brut)
+    while ticks_diff(ticks_ms(), start_time) < timeout_ms:
+        if lora.received_packet():
+            print("Msg recu")
+            packet_detected = True
+            break
+        sleep(0.05)
+
+    if not packet_detected:
+        # Forcer le retour au mode veille/standard pour pouvoir émettre au prochain coup
+        lora.sleep() 
         return False
 
+    # Lecture du paquet de mise à jour des clés
     packet = lora.read_payload()
+    
+    # Sécurité : vérification de la signature HMAC du paquet d'update
     ok, new_aes_key, new_hmac_key = verify_key_update(packet, HMAC_KEY)
 
     if ok:
         AES_KEY = new_aes_key
         HMAC_KEY = new_hmac_key
+        
+        # Optionnel mais recommandé : Sauvegarder les clés en mémoire flash (config.json) 
+        # pour éviter de les perdre lors d'un reboot de l'ESP32.
+        
         screen[0] = 'KEYS OK'
         screen[1] = NODE_ID
         screen[2] = 'updated'
         write_screen(oled, screen)
+        lora.sleep()
         return True
-
+    
+    # Si un paquet est reçu mais invalide (mauvais HMAC, attaque par rejeu...)
     screen[0] = 'KEYS BAD'
     screen[1] = NODE_ID
+    screen[2] = 'Rejected!'
     write_screen(oled, screen)
+    lora.sleep()
     return False
 
 
@@ -81,21 +105,31 @@ def run():
     screen[1] = NODE_ID
     screen[2] = 'AES+HMAC'
     write_screen(oled, screen)
+    sleep(2)
 
     while True:
         counter += 1
         payload = build_payload(counter)
+        
+        # Chiffrement AES-CBC + Signature HMAC-SHA1 + Encodage Base64
         packet = pack_message(NODE_ID, payload.encode(), AES_KEY, HMAC_KEY)
 
+        # Envoi de la trame Base64 via LoRa
         lora.println(packet)
+        print("[TX] Paquet envoyé : {}".format(packet[:30] + "..."))
 
+        # Mise à jour de l'affichage OLED
         screen[0] = 'TX {}'.format(NODE_ID)
-        screen[1] = packet[:21]
+        screen[1] = packet[:16] # Affiche les 16 premiers caractères du Base64
         screen[2] = 'counter {}'.format(counter)
         write_screen(oled, screen)
 
-        listen_key_update(lora, oled, screen)
-        sleep(5)
+        # Fenêtre d'écoute des clés (2 secondes d'ouverture)
+        print("Enter listening")
+        listen_key_update(lora, oled, screen, timeout_ms=5000)
+        
+        # Intervalle de repos avant la prochaine mesure (5 secondes)
+        sleep(1)
 
 
 if __name__ == '__main__':

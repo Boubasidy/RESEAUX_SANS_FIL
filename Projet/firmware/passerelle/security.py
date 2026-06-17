@@ -65,7 +65,12 @@ def encrypt_aes_cbc(key, plaintext):
 def decrypt_aes_cbc(key, data):
     nonce = data[:BLOCK_SIZE]
     ciphertext = data[BLOCK_SIZE:]
-    cipher = aes(key, AES_CBC, nonce)
+    try:
+        # Mode 3 est souvent AES_DECRYPT_CBC dans ucryptolib
+        cipher = aes(key, 3, nonce) 
+    except ValueError:
+        # Si votre firmware utilise le mode 2 pour les deux actions
+        cipher = aes(key, AES_CBC, nonce)        
     return unpad(cipher.decrypt(ciphertext))
 
 
@@ -110,13 +115,26 @@ def build_key_update(new_aes_key, new_hmac_key, current_hmac_key):
 
 def verify_key_update(command_packet, current_hmac_key):
     try:
-        command, mac = command_packet.rsplit(b'|', 1)
+        # Séparation de la commande et du HMAC textuel hex
+        command, mac_hex = command_packet.rsplit(b'|', 1)
+        
+        # 1. Calcul du HMAC attendu (octets bruts)
         expected = hmac_sha1(current_hmac_key, command)
-        if not equal_bytes(mac, expected):
+        
+        # 2. CORRECTION : unhexlify convertit le texte HEX en octets bruts sous MicroPython
+        received_bytes = ubinascii.unhexlify(mac_hex)
+        
+        # 3. Comparaison en temps constant
+        if not equal_bytes(received_bytes, expected):
+            print("HMAC Mismatch!")
             return False, b'', b''
+            
         parts = command.split(b'|')
         if len(parts) != 4 or parts[0] != KEYUPDATE_PREFIX:
             return False, b'', b''
-        return True, ubinascii.a2b_hex(parts[2]), ubinascii.a2b_hex(parts[3])
-    except Exception:
+            
+        # 4. Conversion également des clés reçues (qui sont en HEX)
+        return True, ubinascii.unhexlify(parts[2]), ubinascii.unhexlify(parts[3])
+    except Exception as e:
+        print("Error in verify:", e)
         return False, b'', b''
