@@ -78,13 +78,13 @@ python3 -m pip install -r requirements.txt
 Dans un premier shell :
 
 ```bash
-mosquitto_sub -h p-fb.net -u insa -P insa -t insa/lora/data
+mosquitto_sub -h p-fb.net -u insa -P insa -t echange
 ```
 
 Dans un second shell :
 
 ```bash
-mosquitto_pub -h p-fb.net -u insa -P insa -t insa/lora/data -m "coucou"
+mosquitto_pub -h p-fb.net -u insa -P insa -t echange -m "coucou"
 ```
 
 Le premier shell doit afficher :
@@ -96,11 +96,11 @@ coucou
 ## Test 2 : lancer le client Linux sécurisé
 
 ```bash
-python3 linux/mqtt_client.py listen \
+python3 Projet/linux/mqtt_client.py listen \
   --broker p-fb.net \
   --mqtt-user insa \
   --mqtt-password insa \
-  --data-topic insa/lora/data \
+  --data-topic echange \
   --aes-key 0123456789abcdef \
   --hmac-key abcd
 ```
@@ -115,6 +115,43 @@ Sortie attendue si le HMAC est invalide ou si la clé est mauvaise :
 
 ```text
 [BAD] message rejected
+raw: ...
+```
+
+## Test 2 bis : publier un message sécurisé de test depuis Linux
+
+Ce test vérifie seulement le client Linux, pas la liaison LoRa.
+
+Lancer l’écoute dans un premier shell :
+
+```bash
+python3 Projet/linux/mqtt_client.py listen \
+  --broker p-fb.net \
+  --mqtt-user insa \
+  --mqtt-password insa \
+  --data-topic echange \
+  --aes-key 0123456789abcdef \
+  --hmac-key abcd
+```
+
+Publier un message sécurisé dans un second shell :
+
+```bash
+python3 Projet/linux/mqtt_client.py publish-test \
+  --broker p-fb.net \
+  --mqtt-user insa \
+  --mqtt-password insa \
+  --data-topic echange \
+  --aes-key 0123456789abcdef \
+  --hmac-key abcd \
+  --node-id capteur1 \
+  --message coucou
+```
+
+Sortie attendue dans le shell d’écoute :
+
+```text
+[OK] capteur1 coucou
 ```
 
 ## Test 3 : lancer les deux ESP32
@@ -150,7 +187,7 @@ python3 linux/mqtt_client.py listen \
   --broker p-fb.net \
   --mqtt-user insa \
   --mqtt-password insa \
-  --data-topic insa/lora/data \
+  --data-topic echange \
   --aes-key 0123456789abcdef \
   --hmac-key mauvaisecle
 ```
@@ -175,7 +212,7 @@ python3 linux/mqtt_client.py update-keys \
   --broker p-fb.net \
   --mqtt-user insa \
   --mqtt-password insa \
-  --command-topic insa/lora/command/passerelle \
+  --command-topic echange/command/passerelle \
   --current-hmac-key abcd \
   --new-aes-key nouvellecle16octets \
   --new-hmac-key nouvellecle
@@ -195,7 +232,7 @@ python3 linux/mqtt_client.py listen \
   --broker p-fb.net \
   --mqtt-user insa \
   --mqtt-password insa \
-  --data-topic insa/lora/data \
+  --data-topic echange \
   --aes-key nouvellecle16octets \
   --hmac-key nouvellecle
 ```
@@ -211,7 +248,7 @@ Si aucun message n’arrive :
 - vérifier que les clés AES/HMAC sont identiques sur le capteur, la passerelle et le client Linux ;
 - vérifier que la passerelle est bien connectée au Wi-Fi ;
 - vérifier que le broker MQTT accepte bien les identifiants `insa / insa` ;
-- vérifier que le topic MQTT utilisé est bien `insa/lora/data`.
+- vérifier que le topic MQTT utilisé est bien `echange`.
 
 Si les messages sont rejetés :
 
