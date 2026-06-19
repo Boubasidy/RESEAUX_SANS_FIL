@@ -1,257 +1,197 @@
-# Infrastructure de capteurs : MQTT + LoRa sécurisé
+# Infrastructure de capteurs : MQTT + LoRa Bidirectionnel Sécurisé
 
-Ce projet contient une passerelle MQTT/LoRa avec chiffrement AES-CBC, authentification et intégrité HMAC-SHA1.
+Ce projet contient une passerelle MQTT/LoRa avec chiffrement AES-CBC, authentification et intégrité HMAC-SHA1. Il intègre un système complet de communication bidirectionnelle permettant le **renouvellement dynamique des clés cryptographiques (OTA Rekeying)** et la gestion à distance depuis un client Linux interactif.
 
 ## Architecture
 
-- ESP32 capteur :
-  - génère une mesure toutes les 5 secondes ;
-  - chiffre la donnée en AES-CBC ;
-  - ajoute un HMAC-SHA1 ;
-  - transmet le paquet par LoRa.
+* **ESP32 Capteur :**
 
-- ESP32 passerelle :
-  - reçoit les messages LoRa ;
-  - vérifie le HMAC ;
-  - déchiffre AES-CBC ;
-  - publie le résultat vers le broker MQTT `p-fb.net:1883`.
+  * génère une mesure toutes les 5 secondes ;
 
-- Client Linux :
-  - s’abonne au topic MQTT ;
-  - vérifie l’authentification et l’intégrité ;
-  - déchiffre les messages ;
-  - peut mettre à jour les clés de manière sécurisée.
+  * chiffre la donnée en AES-CBC ;
+
+  * ajoute une signature HMAC-SHA1 pour l'intégrité ;
+
+  * transmet le paquet par LoRa ;
+
+  * **ouvre une fenêtre d'écoute LoRa de 6 secondes** après chaque envoi pour recevoir d'éventuelles commandes (nouveauté).
+
+* **ESP32 Passerelle :**
+
+  * reçoit les messages LoRa des capteurs ;
+
+  * vérifie le HMAC et déchiffre l'AES-CBC (sauf si le mode `NOCHECK` est activé) ;
+
+  * publie le résultat vers le broker MQTT ;
+
+  * **écoute les commandes MQTT de l'administrateur** pour relayer des requêtes (ex: mise à jour de clés) vers les capteurs via LoRa.
+
+* **Client Linux (Interactif) :**
+
+  * interface shell (invite de commande `(mqtt)`) ;
+
+  * s’abonne au topic MQTT pour décoder la télémétrie en direct ;
+
+  * **permet l'envoi de commandes administratives** : rotation de clés (rekeying), désactivation temporaire de la sécurité (`NOCHECK`), ou publication de messages de test.
 
 ## Fichiers MicroPython
 
-À copier à la racine de chaque ESP32.
+À copier à la racine de chaque ESP32 (via un outil comme Thonny ou ampy).
 
-### Capteur
+### 1. Capteur
 
-Copier tous les fichiers de :
+Copier tous les fichiers du dossier `Projet/firmware/capteur/` sur le premier ESP32.
 
-```text
-firmware/capteur/
+### 2. Passerelle
+
+Copier tous les fichiers du dossier `Projet/firmware/passerelle/` sur le second ESP32. Configurez obligatoirement le point d'accès Wi-Fi dans le fichier `config.py` de la passerelle :
+
+```python
+WIFI_SSID = 'Votre_SSID'
+WIFI_PASSWORD = 'Votre_Mot_de_passe'
 ```
 
-sur le premier ESP32.
+### Paramètres communs (clés initiales)
 
-### Passerelle
-
-Copier tous les fichiers de :
-
-```text
-firmware/passerelle/
-```
-
-sur le second ESP32.
-
-Les deux ESP32 doivent avoir les mêmes paramètres dans `config.py` :
+Les deux ESP32 et le client Linux utilisent initialement les clés définies dans leurs fichiers `config.py` respectifs :
 
 ```python
 AES_KEY = b'0123456789abcdef'
 HMAC_KEY = b'abcd'
 ```
 
-Ils doivent aussi avoir les mêmes paramètres LoRa :
+## Installation du client d'administration Linux
 
-```python
-'frequency': 868E6,
-'spreading_factor': 11,
-'coding_rate': 5,
-'sync_word': 0x12,
-'enable_CRC': True,
-```
-
-## Installation du client Linux
-
-Depuis le dossier `projet/` :
+Le nouveau client Linux se trouve dans le dossier `Projet/mqtt_client/`. Depuis le dossier racine du projet :
 
 ```bash
+# Création et activation de l'environnement virtuel
 python3 -m venv .venv
 source .venv/bin/activate
-python3 -m pip install -r requirements.txt
+
+# Installation des dépendances (Paho MQTT, Cryptography, etc.)
+python3 -m pip install -r Projet/requirements.txt
 ```
 
-## Test 1 : vérifier le broker MQTT
+## Utilisation et Tests
 
-Dans un premier shell :
+Le client Linux agit désormais comme un interpréteur de commandes interactif.
+
+### Lancer le client
 
 ```bash
-mosquitto_sub -h p-fb.net -u insa -P insa -t echange
+python3 Projet/mqtt_client/main.py
 ```
 
-Dans un second shell :
+*Le terminal affichera une invite de commande `(mqtt)> `.*
 
-```bash
-mosquitto_pub -h p-fb.net -u insa -P insa -t echange -m "coucou"
-```
+### Liste des commandes disponibles dans le shell
 
-Le premier shell doit afficher :
+Tapez `help` dans l'invite pour voir toutes les commandes.
 
-```text
-coucou
-```
+* `listen` : Démarre l'écoute des messages chiffrés sur le réseau.
 
-## Test 2 : lancer le client Linux sécurisé
+* `stop_listen` : Arrête l'écoute.
 
-```bash
-python3 Projet/linux/mqtt_client.py listen \
-  --broker p-fb.net \
-  --mqtt-user insa \
-  --mqtt-password insa \
-  --data-topic echange \
-  --aes-key 0123456789abcdef \
-  --hmac-key abcd
-```
+* `status` : Affiche l'état du broker, des clés en cours d'utilisation et si l'écoute est active.
 
-Sortie attendue lorsqu’un message valide arrive :
+* `update_keys <nouvelle_cle_aes> <nouvelle_cle_hmac>` : Lance une rotation des clés sur le réseau.
 
-```text
-[OK] capteur1 {"node":"capteur1","type":"sensor","counter":1,...}
-```
+* `nocheck <on|off>` : Active/désactive la vérification de sécurité sur la passerelle.
 
-Sortie attendue si le HMAC est invalide ou si la clé est mauvaise :
+* `publish <node_id> <message>` : Simule l'envoi d'un message capteur pour tester la passerelle.
 
-```text
-[BAD] message rejected
-raw: ...
-```
+* `exit` ou `quit` : Ferme l'application.
 
-## Test 2 bis : publier un message sécurisé de test depuis Linux
+## Scénarios de tests
 
-Ce test vérifie seulement le client Linux, pas la liaison LoRa.
+### Test 1 : Lancement standard de l'infrastructure
 
-Lancer l’écoute dans un premier shell :
+1. Allumez la passerelle, l'écran OLED indique son IP et sa connexion au broker.
 
-```bash
-python3 Projet/linux/mqtt_client.py listen \
-  --broker p-fb.net \
-  --mqtt-user insa \
-  --mqtt-password insa \
-  --data-topic echange \
-  --aes-key 0123456789abcdef \
-  --hmac-key abcd
-```
+2. Allumez le capteur.
 
-Publier un message sécurisé dans un second shell :
+3. Dans le client Linux, tapez :
 
-```bash
-python3 Projet/linux/mqtt_client.py publish-test \
-  --broker p-fb.net \
-  --mqtt-user insa \
-  --mqtt-password insa \
-  --data-topic echange \
-  --aes-key 0123456789abcdef \
-  --hmac-key abcd \
-  --node-id capteur1 \
-  --message coucou
-```
+   ```text
+   (mqtt) listen
+   ```
 
-Sortie attendue dans le shell d’écoute :
+4. Vous devriez voir arriver les paquets décodés en temps réel :
 
-```text
-[OK] capteur1 coucou
-```
+   ```json
+   [OK] capteur1 {"node":"capteur1","type":"sensor","counter":1,"temperature":20.5,"battery":89}
+   ```
 
-## Test 3 : lancer les deux ESP32
+### Test 2 : Rotation de clés à distance (OTA Rekeying)
 
-1. Flasher le premier ESP32 avec les fichiers de `firmware/capteur/`.
-2. Flasher le second ESP32 avec les fichiers de `firmware/passerelle/`.
-3. Connecter la passerelle au Wi-Fi configuré dans `config.py`.
-4. Lancer le client Linux avec la commande `listen`.
-5. Attendre les messages LoRa.
+Cette opération modifie les clés à la volée de manière synchronisée entre le PC, la passerelle, et le capteur en utilisant un HMAC de la clé actuelle pour authentifier la demande.
 
-La passerelle publie des messages JSON contenant :
+1. Lancer l'écoute dans le client : `listen`
 
-```json
-{
-  "node": "capteur1",
-  "data": "...",
-  "rssi": -80,
-  "snr": 8.5,
-  "secure": true
-}
-```
+2. Déclencher la mise à jour (la clé AES **doit** faire 16 caractères) :
 
-Le RSSI et le SNR sont aussi affichés sur l’OLED de la passerelle.
+   ```text
+   (mqtt) update_keys 1234567890123456 supersecret
+   ```
 
-## Test 4 : vérifier l’intégrité
+3. **Le système gère la transaction complète** :
 
-Pour vérifier que le HMAC fonctionne :
+   * Le Linux envoie l'ordre à la Passerelle.
 
-1. Lancer le client Linux avec une mauvaise clé HMAC :
+   * La Passerelle met à jour ses clés et relaie l'ordre par LoRa au capteur.
 
-```bash
-python3 linux/mqtt_client.py listen \
-  --broker p-fb.net \
-  --mqtt-user insa \
-  --mqtt-password insa \
-  --data-topic echange \
-  --aes-key 0123456789abcdef \
-  --hmac-key mauvaisecle
-```
+   * Le Capteur vérifie la demande, met à jour ses clés (OLED: `KEYS OK`), et renvoie un acquittement.
 
-2. Attendre un message du capteur.
-3. Le client doit afficher :
+   * Le Client Linux reçoit l'acquittement et valide l'opération finale en affichant :
+     `[CONFIRMED] Mise à jour des clés validée par le capteur.`
 
-```text
-[BAD] message rejected
-```
+### Mécanisme de sécurité : Rollback Automatique
 
-Cela montre qu’un message modifié ou signé avec une mauvaise clé est rejeté.
+Pour éviter qu'une mise à jour de clés ne corrompe le réseau de manière irréversible (par exemple si la passerelle applique les nouvelles clés mais que le capteur ne les reçoit pas ou les refuse), un mécanisme de **Rollback Automatique** est intégré au client Linux :
 
-## Mise à jour sécurisée des clés
+1. **Compte à rebours :** Lors de l'envoi de la commande `update_keys`, le client Linux initie un compte à rebours (timeout).
 
-Le protocole de mise à jour utilise un HMAC avec la clé actuelle.
+2. **Détection d'échec (NACK ou Timeout) :** Si le client reçoit un rejet explicite (`keys_rejected` / `KEYS_FAILED`) signalant que le capteur a refusé la signature de la trame (NACK), **OU** s'il ne reçoit aucune confirmation avant l'expiration du délai (perte radio), la transaction est immédiatement abortée.
 
-Depuis le PC, avec les clés actuelles :
+3. **Restauration distante (Rollback) :** Le client Linux forge alors automatiquement une commande de "retour en arrière" (restauration des anciennes clés). Puisque la passerelle utilise déjà les *nouvelles* clés, cette commande de restauration est impérativement signée avec la *nouvelle* clé HMAC.
 
-```bash
-python3 linux/mqtt_client.py update-keys \
-  --broker p-fb.net \
-  --mqtt-user insa \
-  --mqtt-password insa \
-  --command-topic echange/command/passerelle \
-  --current-hmac-key abcd \
-  --new-aes-key nouvellecle16octets \
-  --new-hmac-key nouvellecle
-```
+4. **Resynchronisation :** La passerelle accepte l'ordre, repasse sur ses anciennes clés, et le réseau retrouve son état de fonctionnement d'origine. Les clés du client Linux sont également restaurées localement.
 
-Après une mise à jour réussie :
+### Test 3 : Mode `NOCHECK` (Débogage)
 
-- la passerelle met à jour ses clés ;
-- elle renvoie la commande au capteur par LoRa ;
-- le capteur met à jour ses clés ;
-- le client Linux doit ensuite être relancé avec les nouvelles clés.
+Si un capteur a un HMAC invalide ou n'a pas les bonnes clés, son message est rejeté silencieusement. Pour voir le trafic brut LoRa reçu par la passerelle :
 
-Exemple :
+1. Dans le client Linux, tapez :
 
-```bash
-python3 linux/mqtt_client.py listen \
-  --broker p-fb.net \
-  --mqtt-user insa \
-  --mqtt-password insa \
-  --data-topic echange \
-  --aes-key nouvellecle16octets \
-  --hmac-key nouvellecle
-```
+   ```text
+   (mqtt) nocheck on
+   ```
 
-La nouvelle clé AES doit faire exactement 16 octets.
+2. La passerelle (qui affiche `NO-CHK` sur son OLED) va cesser de déchiffrer et transférer la chaîne Base64 intégrale sur le serveur MQTT.
+
+3. Le client Linux récupère les données brutes :
+
+   ```json
+   [MQTT raw] {"node": "capteur1", "data": "SU5TQ...", "rssi": -45, "snr": 9.5, "secure": false}
+   ```
+
+4. Remettez la sécurité en route avec : `nocheck off`.
 
 ## Dépannage
 
-Si aucun message n’arrive :
+* **Aucun message n'arrive au Linux :**
 
-- vérifier que les deux ESP32 utilisent la même fréquence LoRa ;
-- vérifier que le spreading factor, le coding rate et le sync word sont identiques ;
-- vérifier que les clés AES/HMAC sont identiques sur le capteur, la passerelle et le client Linux ;
-- vérifier que la passerelle est bien connectée au Wi-Fi ;
-- vérifier que le broker MQTT accepte bien les identifiants `insa / insa` ;
-- vérifier que le topic MQTT utilisé est bien `echange`.
+  * Vérifiez la connexion Wi-Fi de la passerelle via le moniteur série.
 
-Si les messages sont rejetés :
+  * Vérifiez que la passerelle et le capteur partagent bien le même `sync_word` et `spreading_factor` dans `config.py`.
 
-- vérifier que la clé HMAC est la même partout ;
-- vérifier que la clé AES est la même partout ;
-- relancer une mise à jour sécurisée des clés avec `update-keys`.
+* **Messages rejetés (HMAC invalide / Décryptage impossible) :**
+
+  * Il y a une désynchronisation des clés.
+
+  * Si le PC est à jour mais le capteur a refusé les clés, vérifiez sur l'OLED du capteur s'il est affiché `KEYS BAD`. Dans ce cas, redémarrez les ESP32 pour recharger les clés d'usine du fichier de config et redémarrez le client Linux.
+
+* **La mise à jour des clés reste bloquée en "[BAD_KEYS] (Old Keys Valid)" :**
+
+  * Le message n'a pas atteint le capteur dans sa fenêtre d'écoute de 6 secondes, ou le capteur a refusé la trame (NACK). Le Linux a automatiquement déclenché le Rollback décrit ci-dessus. Attendez l'annulation complète, puis réessayez.
