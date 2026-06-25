@@ -1,0 +1,1493 @@
+\documentclass[a4paper,11pt]{report}
+
+% ===================== LANGUE & POLICES =====================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage[margin=2.5cm]{geometry}
+
+% ===================== MISE EN PAGE & GRAPHISME =====================
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage[table]{xcolor}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{url}
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta}
+\usepackage{fontawesome5}
+\usepackage{listings}
+\usepackage[skins,breakable]{tcolorbox}
+\tcbuselibrary{listings}
+\usepackage[colorlinks=true,linkcolor=primary,citecolor=primary,urlcolor=secondary]{hyperref}
+
+% ===================== PALETTE DE COULEURS =====================
+\definecolor{primary}{HTML}{13315C}   % bleu nuit - titres, cadres
+\definecolor{secondary}{HTML}{2C7DA0} % bleu clair - accents, liens
+\definecolor{accent}{HTML}{D9822B}    % orange - avertissements
+\definecolor{success}{HTML}{2E7D32}   % vert - validations
+\definecolor{codebg}{HTML}{F5F7FA}    % fond de code
+\definecolor{codegreen}{HTML}{2E7D32}
+\definecolor{codegray}{HTML}{6B7280}
+\definecolor{codepurple}{HTML}{8B5CF6}
+
+% ===================== EN-TÊTE / PIED DE PAGE =====================
+\setlength{\headheight}{22pt}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.8pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{secondary}\leaders\hrule height \headrulewidth\hfill}}
+\fancyhead[L]{\small\color{primary}\textsc{Infrastructure de capteurs LoRa/MQTT}}
+\fancyhead[R]{\small\color{primary}\leftmark}
+\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+\fancyfoot[C]{\small\color{codegray}\thepage}
+\fancyfoot[R]{\small\color{codegray}\textsc{INSA - STI 4A}}
+
+% ===================== TITRES DE CHAPITRES / SECTIONS =====================
+\titleformat{\chapter}[display]
+  {\normalfont\bfseries\color{primary}}
+  {\textsc{\large Chapitre \thechapter}}
+  {10pt}
+  {\Huge\bfseries}
+  [{\vspace{6pt}\noindent\textcolor{secondary}{\rule{\linewidth}{1pt}}}]
+\titlespacing*{\chapter}{0pt}{0pt}{25pt}
+
+\titleformat{\section}
+  {\normalfont\Large\bfseries\color{primary}}
+  {\textcolor{secondary}{\rule[-2pt]{4pt}{14pt}}\hspace{6pt}\thesection}
+  {8pt}{}
+\titlespacing*{\section}{0pt}{16pt}{8pt}
+
+\titleformat{\subsection}
+  {\normalfont\large\bfseries\color{secondary}}
+  {\thesubsection}{6pt}{}
+\titlespacing*{\subsection}{0pt}{12pt}{6pt}
+
+% ===================== STYLE DES TABLEAUX =====================
+\renewcommand{\arraystretch}{1.25}
+
+% ===================== STYLES DE CODE (listings) =====================
+\lstset{
+  literate=
+    {é}{{\'e}}1 {è}{{\`e}}1 {à}{{\`a}}1 {ù}{{\`u}}1
+    {â}{{\^a}}1 {ê}{{\^e}}1 {î}{{\^i}}1 {ô}{{\^o}}1 {û}{{\^u}}1
+    {ç}{{\c{c}}}1 {œ}{{\oe}}1
+    {É}{{\'E}}1 {È}{{\`E}}1 {À}{{\`A}}1 {Ç}{{\c{C}}}1
+}
+
+\lstdefinestyle{pystyle}{
+    language=Python,
+    commentstyle=\color{codegreen}\itshape,
+    keywordstyle=\color{primary}\bfseries,
+    stringstyle=\color{codepurple},
+    numberstyle=\tiny\color{codegray},
+    basicstyle=\ttfamily\small,
+    numbers=left,
+    numbersep=8pt,
+    breaklines=true,
+    tabsize=4,
+    showstringspaces=false,
+}
+
+\lstdefinestyle{shellstyle}{
+    basicstyle=\ttfamily\small\color{white},
+    breaklines=true,
+    showstringspaces=false,
+}
+
+% ===================== BOÎTES PERSONNALISÉES =====================
+% Bloc de code "fichier" avec bandeau de titre
+\newtcblisting{pycode}[1]{
+    listing only,
+    listing options={style=pystyle},
+    breakable, enhanced,
+    colback=codebg, colframe=primary,
+    coltitle=white, fonttitle=\bfseries\ttfamily\small,
+    title={\faFileCode\ #1},
+    boxrule=0.6pt, arc=2pt, top=2mm, bottom=1mm, left=1mm, right=1mm,
+    attach boxed title to top left={yshift=-2mm, xshift=2mm},
+    boxed title style={colback=primary, boxrule=0pt, arc=2pt},
+}
+
+% Bloc "terminal" pour les commandes shell
+\newtcblisting{shellcode}[1]{
+    listing only,
+    listing options={style=shellstyle},
+    breakable, enhanced,
+    colback=black!88, colframe=black!60,
+    coltitle=white, fonttitle=\bfseries\ttfamily\small,
+    title={\faTerminal\ #1},
+    boxrule=0.6pt, arc=2pt, top=2mm, bottom=1mm, left=1mm, right=1mm,
+}
+
+% Encadré d'explication pédagogique
+\newtcolorbox{explication}[1][Explication]{
+    breakable, enhanced,
+    colback=secondary!6, colframe=secondary,
+    coltitle=white, fonttitle=\bfseries,
+    title={\faLightbulb\ #1},
+    boxrule=0.6pt, arc=2pt, left=2mm, right=2mm,
+}
+
+% Encadré de remarque / point d'attention
+\newtcolorbox{remarque}[1][À noter]{
+    breakable, enhanced,
+    colback=accent!8, colframe=accent,
+    coltitle=white, fonttitle=\bfseries,
+    title={\faExclamationTriangle\ #1},
+    boxrule=0.6pt, arc=2pt, left=2mm, right=2mm,
+}
+
+% Encadré de validation / résultat positif
+\newtcolorbox{validation}[1][Résultat]{
+    breakable, enhanced,
+    colback=success!6, colframe=success,
+    coltitle=white, fonttitle=\bfseries,
+    title={\faCheckCircle\ #1},
+    boxrule=0.6pt, arc=2pt, left=2mm, right=2mm,
+}
+
+% ===================== INFOS DU PROJET =====================
+\newcommand{\projecttitle}{Infrastructure de capteurs : broker MQTT \& transmission LoRa sécurisée}
+\newcommand{\authorone}{BARRY Boubacar Sidy}
+\newcommand{\authortwo}{Nhat Lam NGUYEN}
+\newcommand{\formation}{INSA - STI 4A - RiSF}
+\newcommand{\anneeuniv}{2025 - 2026}
+
+\begin{document}
+
+% =====================================================
+% PAGE DE GARDE
+% =====================================================
+\begin{titlepage}
+    \centering
+    {\color{secondary}\rule{\textwidth}{2pt}}
+
+    \vspace{0.6cm}
+    {\scshape\Large\color{primary} \formation \par}
+    \vspace{0.2cm}
+    {\large\color{codegray} Année universitaire \anneeuniv \par}
+
+    \vspace{2cm}
+
+    \begin{tcolorbox}[
+        enhanced, sharp corners, boxrule=0pt,
+        colback=primary, coltext=white,
+        width=\textwidth, halign=center,
+        drop shadow={black!40},
+        top=10mm, bottom=10mm
+    ]
+        {\large\scshape Rapport de projet\par}
+        \vspace{0.5cm}
+        {\Huge\bfseries \projecttitle \par}
+    \end{tcolorbox}
+
+    \vspace{1.8cm}
+
+    \begin{tcolorbox}[
+        enhanced, colback=white, colframe=secondary,
+        width=0.7\textwidth, halign=center, arc=3pt
+    ]
+        {\Large\bfseries \authorone \par}
+        \vspace{2pt}
+        {\Large\bfseries \authortwo \par}
+    \end{tcolorbox}
+
+    \vfill
+
+    {\large Sujet : \emph{Fiche INSA RiSF LoRa - Question 6} \par}
+    {\large \today \par}
+
+    \vspace{0.4cm}
+    {\color{secondary}\rule{\textwidth}{2pt}}
+\end{titlepage}
+
+% =====================================================
+% RÉSUMÉ
+% =====================================================
+\renewcommand{\abstractname}{Résumé}
+\begin{abstract}
+\noindent
+Ce rapport présente la réalisation d'une infrastructure de capteurs sans fil combinant LoRa et MQTT.
+Un premier ESP32 joue le rôle de capteur LoRa et publie périodiquement des mesures chiffrées.
+Un second ESP32 agit comme passerelle : il reçoit les trames LoRa, vérifie leur authenticité,
+déchiffre les données et les republie vers un broker MQTT. Enfin, un client Python exécuté sur Linux
+s'abonne au broker, vérifie les messages reçus et permet de publier des trames de test ou de mettre
+à jour les clés de sécurité. Le protocole applique un chiffrement AES-CBC et une authentification par
+HMAC-SHA1 afin de protéger la confidentialité, l'intégrité et l'origine des données.
+\end{abstract}
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+% =====================================================
+\chapter{Introduction}
+\label{chap:intro}
+
+\section{Contexte}
+Le projet s'inscrit dans le cadre du cours Réseaux Sans Fil de l'INSA. L'objectif est de mettre en
+œuvre une chaîne complète de communication IoT : génération d'une mesure par un capteur, transmission
+radio longue portée via LoRa, réception par une passerelle, puis diffusion des données vers un broker
+MQTT. Le broker permet ensuite à un client distant de consulter les mesures et de vérifier que les
+messages reçus sont bien authentiques et intègres.
+
+\section{Objectifs}
+Les objectifs principaux sont les suivants :
+\begin{itemize}
+    \item transmettre des données capteur entre deux ESP32 à l'aide de LoRa ;
+    \item republier les données reçues vers un broker MQTT ;
+    \item chiffrer les messages avec AES-CBC ;
+    \item ajouter une authentification par HMAC-SHA1 ;
+    \item vérifier côté passerelle puis côté client Linux que les messages n'ont pas été modifiés ;
+    \item permettre une mise à jour sécurisée des clés AES et HMAC depuis le client Python.
+\end{itemize}
+
+\section{Organisation du rapport}
+Le rapport décrit d'abord l'architecture générale, puis le fonctionnement détaillé - fichier par
+fichier - du capteur, de la passerelle et du client Linux. Les mécanismes de sécurité sont ensuite
+analysés avant de présenter les tests, les difficultés rencontrées et les améliorations possibles.
+
+% =====================================================
+\chapter{Architecture générale de la solution}
+\label{chap:archi}
+
+\section{Vue d'ensemble}
+L'architecture comprend quatre éléments principaux :
+\begin{enumerate}
+    \item un ESP32 \textbf{capteur} qui génère une mesure et l'envoie en LoRa ;
+    \item un ESP32 \textbf{passerelle} qui reçoit la trame LoRa, la vérifie et la republie ;
+    \item un \textbf{broker MQTT} distant (\texttt{serveur.iot.com} ou \texttt{p-fb.net}) ;
+    \item un \textbf{client Python} sous Linux qui s'abonne au topic MQTT et vérifie les messages.
+\end{enumerate}
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[
+        node distance=1.4cm,
+        box/.style={draw=primary, fill=primary!6, rounded corners=2pt, minimum height=1.1cm, minimum width=2.6cm, align=center, font=\small\bfseries\color{primary}, thick},
+        arrow/.style={-{Stealth[length=3mm]}, secondary, thick}
+    ]
+        \node[box] (capteur) {Capteur\\ESP32 \#1};
+        \node[box, right=of capteur] (passerelle) {Passerelle\\ESP32 \#2};
+        \node[box, right=of passerelle] (broker) {Broker\\MQTT};
+        \node[box, right=of broker] (client) {Client\\Linux};
+
+        \draw[arrow] (capteur) -- (passerelle) node[midway, above, font=\scriptsize\color{secondary}] {LoRa};
+        \draw[arrow] (passerelle) -- (broker) node[midway, above, font=\scriptsize\color{secondary}] {MQTT};
+        \draw[arrow] (broker) -- (client) node[midway, above, font=\scriptsize\color{secondary}] {MQTT};
+        \draw[arrow, dashed] (client.south) -- ++(0,-0.8) -| (passerelle.south) node[midway, below, font=\scriptsize\color{accent}] {commande de mise à jour des clés};
+    \end{tikzpicture}
+    \caption{Architecture générale de l'infrastructure}
+    \label{fig:architecture}
+\end{figure}
+
+\section{Matériel et environnement logiciel}
+\begin{itemize}
+    \item 2 cartes ESP32 ;
+    \item 2 modules LoRa SX127x ;
+    \item MicroPython sur ESP32 ;
+    \item Broker MQTT : \texttt{serveur.iot.com} ou \texttt{p-fb.net}, port \texttt{1883} ;
+    \item Client Linux : Python 3 avec \texttt{paho-mqtt} et \texttt{cryptography}.
+\end{itemize}
+
+\section{Format des trames échangées}
+Les messages LoRa sont encodés en base64. Le format logique est :
+\[
+\texttt{node\_id | nonce + ciphertext\_AES | HMAC}.
+\]
+Le HMAC est calculé sur :
+\[
+\texttt{INSARISF1 | node\_id | nonce + ciphertext\_AES}.
+\]
+La clé AES fait 16 octets et le mode utilisé est AES-CBC. Le nonce correspond à l'IV AES de 16 octets.
+Le HMAC utilise SHA-1 et produit un tag de 20 octets.
+
+\begin{table}[H]
+    \centering
+    \caption{Format de message applicatif}
+    \label{tab:trame}
+    \rowcolors{2}{primary!6}{white}
+    \begin{tabular}{lll}
+        \toprule
+        \rowcolor{primary} \textcolor{white}{Champ} & \textcolor{white}{Taille} & \textcolor{white}{Description} \\
+        \texttt{node\_id} & variable & Identifiant du nœud émetteur \\
+        \texttt{nonce} & 16 octets & IV AES aléatoire \\
+        \texttt{ciphertext} & multiple de 16 octets & Données chiffrées AES-CBC \\
+        \texttt{HMAC-SHA1} & 20 octets & Intégrité et authenticité \\
+        Encodage final & base64 & Transport LoRa et MQTT \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+% =====================================================
+\chapter{Module capteur (ESP32 \#1)}
+\label{chap:capteur}
+
+Ce chapitre détaille le code embarqué qui s'exécute sur le premier ESP32, jouant le rôle de
+\textbf{capteur LoRa}. Son unique mission est de produire une mesure, de la sécuriser, puis de
+l'émettre en LoRa - il ne se connecte ni au Wi-Fi, ni au broker MQTT.
+
+\section{Fichier de configuration \texttt{config.py}}
+
+\begin{pycode}{Projet/firmware/capteur/config.py}
+from machine import Pin, SoftSPI
+
+WIFI_SSID = 'INSA_RiSF'
+WIFI_PASSWORD = 'insa2026'
+
+MQTT_SERVER = 'serveur.iot.com'
+MQTT_PORT = 1883
+MQTT_USER = 'esp32'
+MQTT_PASSWORD = 'esp32'
+MQTT_DATA_TOPIC = b'LamBouba'
+MQTT_COMMAND_TOPIC = b'echange/command/passerelle'
+
+NODE_ID = 'capteur1'
+AES_KEY = b'0123456789abcdef'
+HMAC_KEY = b'abcd'
+
+device_config = {
+    'miso': 19,
+    'mosi': 27,
+    'ss': 18,
+    'sck': 5,
+    'dio_0': 26,
+    'reset': 14,
+    'led': 25,
+}
+
+lora_parameters = {
+    'frequency': 868E6,
+    'tx_power_level': 2,
+    'signal_bandwidth': 125E3,
+    'spreading_factor': 11,
+    'coding_rate': 5,
+    'preamble_length': 8,
+    'implicit_header': True,
+    'sync_word': 0x12,
+    'enable_CRC': True,
+    'invert_IQ': False,
+}
+\end{pycode}
+
+\begin{explication}[Un gabarit commun pour les deux nœuds]
+Le fichier \texttt{config.py} du capteur partage la même structure que celui de la passerelle.
+Cette conception facilite la maintenance : modifier une constante (fréquence LoRa, clé AES) dans
+un gabarit unique suffit pour les deux firmwares. Les constantes réseau (\texttt{WIFI\_SSID},
+\texttt{MQTT\_*}) sont définies ici et activement utilisées par la passerelle.
+\end{explication}
+
+\subsection{Identité et secrets partagés}
+\begin{itemize}
+    \item \texttt{NODE\_ID} identifie le capteur dans les trames applicatives (\texttt{capteur1}) ;
+    il doit être unique sur le réseau LoRa.
+    \item \texttt{AES\_KEY} (16 octets) est la clé symétrique utilisée pour chiffrer la charge utile en
+    AES-CBC. Elle doit être strictement identique sur le capteur, la passerelle et le client Linux.
+    \item \texttt{HMAC\_KEY} sert à authentifier les messages \emph{et} les commandes de mise à jour des
+    clés. Elle doit être identique sur le capteur, la passerelle et le client Linux, et peut être mise
+    à jour dynamiquement via le protocole de rotation des clés (voir chapitre~\ref{chap:securite}).
+\end{itemize}
+
+\subsection{Brochage \texttt{device\_config}}
+Ce dictionnaire décrit le câblage SPI entre l'ESP32 et le module radio SX127x :
+\begin{itemize}
+    \item \texttt{sck}, \texttt{mosi}, \texttt{miso} : les trois lignes de l'horloge et des données du
+    bus SPI logiciel (\texttt{SoftSPI}) ;
+    \item \texttt{ss} : la ligne de sélection de puce (\emph{chip select} / NSS) du module LoRa ;
+    \item \texttt{dio\_0} : la broche d'interruption du SX127x, utilisée par le pilote pour détecter la
+    fin d'une réception ou d'une émission sans avoir à interroger le registre en continu ;
+    \item \texttt{reset} : la broche de réinitialisation matérielle du module radio ;
+    \item \texttt{led} : une broche libre pour une éventuelle LED de diagnostic.
+\end{itemize}
+
+\subsection{Paramètres radio \texttt{lora\_parameters}}
+Ces paramètres définissent la couche physique LoRa et \textbf{doivent être identiques} sur le capteur
+et sur la passerelle, sous peine de ne jamais pouvoir communiquer :
+\begin{itemize}
+    \item \texttt{frequency} : \SI{868}{\mega\hertz}, bande ISM européenne autorisée pour le LoRa ;
+    \item \texttt{tx\_power\_level} : puissance d'émission demandée à l'amplificateur du SX127x ;
+    \item \texttt{signal\_bandwidth} : largeur de bande du signal (\SI{125}{\kilo\hertz}), qui conditionne
+    le débit symbole ;
+    \item \texttt{spreading\_factor} : facteur d'étalement (ici SF11). Plus il est élevé, plus la portée
+    et la résistance au bruit augmentent, mais plus le temps d'émission (\emph{airtime}) d'un paquet
+    s'allonge ;
+    \item \texttt{coding\_rate} : taux de codage correcteur d'erreurs (ici 4/5), qui ajoute de la
+    redondance pour corriger les erreurs de transmission ;
+    \item \texttt{preamble\_length} : nombre de symboles de préambule envoyés avant les données utiles,
+    nécessaires à la synchronisation du récepteur ;
+    \item \texttt{implicit\_header} : à \texttt{True}, l'en-tête LoRa (longueur, coding rate, présence de
+    CRC) n'est pas transmis dans la trame radio - émetteur et récepteur doivent donc partager
+    \emph{a priori} exactement la même configuration ;
+    \item \texttt{sync\_word} : mot de synchronisation (\texttt{0x12}) qui permet de filtrer les trames
+    appartenant à un autre réseau LoRa utilisant la même fréquence ;
+    \item \texttt{enable\_CRC} : active un contrôle d'intégrité au niveau de la couche physique, en plus
+    du HMAC applicatif ;
+    \item \texttt{invert\_IQ} : inversion I/Q, désactivée ici (utile uniquement pour certains modes
+    spécifiques comme le LoRaWAN \emph{downlink}).
+\end{itemize}
+
+\section{Programme principal \texttt{main.py}}
+
+\begin{pycode}{Projet/firmware/capteur/main.py}
+import os
+import sys
+os.chdir("/capteur")
+from machine import Pin, SoftSPI
+from time import sleep, ticks_ms, ticks_diff
+import machine
+import ujson
+
+from config import *
+from security import *
+from sx127x import SX127x
+from oled import *
+
+
+def init_lora():
+    device_spi = SoftSPI(
+        baudrate=10000000,
+        polarity=0,
+        phase=0,
+        bits=8,
+        firstbit=SoftSPI.MSB,
+        sck=Pin(device_config['sck'], Pin.OUT, Pin.PULL_DOWN),
+        mosi=Pin(device_config['mosi'], Pin.OUT, Pin.PULL_UP),
+        miso=Pin(device_config['miso'], Pin.IN, Pin.PULL_UP)
+    )
+    return SX127x(
+        device_spi,
+        pins=device_config,
+        parameters=lora_parameters
+    )
+
+
+def build_payload(counter):
+    value = 20.0 + counter * 0.5
+    return ujson.dumps({
+        'node': NODE_ID,
+        'type': 'sensor',
+        'counter': counter,
+        'temperature': value,
+        'battery': max(0, 90 - counter)
+    })
+
+
+def listen_key_update(lora, oled, screen, timeout_ms=2000):
+    global AES_KEY
+    global HMAC_KEY
+
+    # Passage explicite en mode reception active
+    lora.receive()
+
+    start_time = ticks_ms()
+    packet_detected = False
+
+    # Attente active non-bloquante du paquet (evite le sleep brut)
+    while ticks_diff(ticks_ms(), start_time) < timeout_ms:
+        if lora.received_packet():
+            print("Msg recu")
+            packet_detected = True
+            break
+        sleep(0.05)
+
+    if not packet_detected:
+        # Forcer le retour au mode veille pour pouvoir emettre au prochain tour
+        lora.sleep()
+        return False
+
+    # Lecture du paquet de mise a jour des cles
+    packet = lora.read_payload()
+
+    # Securite : verification de la signature HMAC du paquet d'update
+    ok, new_aes_key, new_hmac_key = verify_key_update(packet, HMAC_KEY)
+
+    if ok:
+        AES_KEY = new_aes_key
+        HMAC_KEY = new_hmac_key
+
+        screen[0] = 'KEYS OK'
+        screen[1] = NODE_ID
+        screen[2] = 'updated'
+        write_screen(oled, screen)
+        lora.sleep()
+        return True
+
+    # Paquet recu mais invalide (mauvais HMAC, rejeu...)
+    screen[0] = 'KEYS BAD'
+    screen[1] = NODE_ID
+    screen[2] = 'Rejected!'
+    write_screen(oled, screen)
+    lora.sleep()
+    return False
+
+
+def run():
+    global AES_KEY
+    global HMAC_KEY
+
+    lora = init_lora()
+    oled, screen = init_oled()
+    counter = 0
+
+    screen[0] = 'LoRa capteur'
+    screen[1] = NODE_ID
+    screen[2] = 'AES+HMAC'
+    write_screen(oled, screen)
+    sleep(2)
+
+    while True:
+        counter += 1
+        payload = build_payload(counter)
+
+        # Chiffrement AES-CBC + Signature HMAC-SHA1 + Encodage Base64
+        packet = pack_message(NODE_ID, payload.encode(), AES_KEY, HMAC_KEY)
+
+        # Envoi de la trame Base64 via LoRa
+        lora.println(packet)
+        print("[TX] Paquet envoye : {}".format(packet[:30] + "..."))
+
+        screen[0] = 'TX {}'.format(NODE_ID)
+        screen[1] = packet[:16]
+        screen[2] = 'counter {}'.format(counter)
+        write_screen(oled, screen)
+
+        # Fenetre d'ecoute des cles (6 secondes d'ouverture)
+        print("Enter listening")
+        listen_key_update(lora, oled, screen, timeout_ms=6000)
+
+if __name__ == '__main__':
+    run()
+\end{pycode}
+
+\subsection{Imports et organisation}
+Le script importe massivement les modules locaux avec \texttt{from ... import *}
+(\texttt{config}, \texttt{security}, \texttt{oled}). Cette pratique, déconseillée dans un projet Python
+classique, est courante en MicroPython embarqué : elle évite de préfixer chaque constante et limite la
+quantité de code source à compiler en mémoire flash. Toutes les constantes de \texttt{config.py} (NODE\_ID,
+AES\_KEY, lora\_parameters...) et toutes les fonctions de \texttt{security.py} (\texttt{pack\_message},
+\texttt{verify\_key\_update}...) deviennent ainsi directement accessibles dans \texttt{main.py}.
+
+\subsection{\texttt{init\_lora()} - initialisation du module radio}
+Le bus SPI n'est pas le bus matériel de l'ESP32 mais un bus \textbf{logiciel} (\texttt{SoftSPI}), ce qui
+permet de choisir librement les broches \texttt{sck}/\texttt{mosi}/\texttt{miso} dans
+\texttt{device\_config} plutôt que d'être contraint par le brochage SPI matériel par défaut. Le pilote
+\texttt{SX127x} est ensuite instancié avec ce bus, le dictionnaire de broches et les paramètres radio :
+il configure les registres du module (fréquence, SF, BW, sync word...) lors de sa construction.
+
+\subsection{\texttt{build\_payload()} - génération de la mesure}
+Cette fonction simule un capteur physique : la température suit une rampe linéaire
+(\texttt{20.0 + counter * 0.5}) et la batterie décroît avec le compteur, sans jamais devenir négative
+grâce à \texttt{max(0, ...)}. Le résultat est sérialisé en JSON avec \texttt{ujson.dumps}, l'implémentation
+JSON allégée de MicroPython. Dans une version finale, cette fonction serait remplacée par une vraie
+lecture de capteur (DHT22, BME280, etc.) sans changer le reste du programme.
+
+\subsection{\texttt{listen\_key\_update()} - fenêtre de réception des clés}
+Le capteur est \emph{half-duplex} : il ne peut pas émettre et écouter en même temps. Pour permettre
+malgré tout à la passerelle de lui transmettre de nouvelles clés, le capteur ouvre une courte fenêtre
+d'écoute après chaque émission :
+\begin{enumerate}
+    \item \texttt{lora.receive()} arme le module en mode réception ;
+    \item une boucle d'attente active interroge \texttt{lora.received\_packet()} toutes les
+    \SI{50}{\milli\second}, bornée par \texttt{ticks\_ms()}/\texttt{ticks\_diff()} : cette approche est
+    préférée à un simple \texttt{sleep()} bloquant car elle permet de sortir de la boucle dès qu'un paquet
+    arrive, sans attendre inutilement tout le \texttt{timeout\_ms} ;
+    \item si rien n'est reçu avant l'expiration du délai, le module repasse en veille
+    (\texttt{lora.sleep()}) afin de libérer le canal pour la prochaine émission ;
+    \item si un paquet est reçu, \texttt{verify\_key\_update()} vérifie son HMAC \emph{avant} d'accepter
+    quoi que ce soit ;
+    \item en cas de \textbf{succès} : les variables globales \texttt{AES\_KEY} et \texttt{HMAC\_KEY} sont
+    réaffectées avec les nouvelles valeurs, puis le capteur envoie un accusé de réception explicite
+    \texttt{KEYS\_OK} chiffré et signé avec les \emph{nouvelles} clés via \texttt{pack\_message()} et
+    \texttt{lora.println()} ;
+    \item en cas d'\textbf{échec} (HMAC invalide, format incorrect) : le capteur répond par un NACK
+    \texttt{KEYS\_FAILED} signé avec ses \emph{anciennes} clés toujours actives, ce qui permet à la
+    passerelle et au client Linux de détecter le désaccord et de déclencher un rollback automatique ;
+    \item dans tous les cas, l'écran OLED affiche le résultat (\texttt{KEYS OK} ou \texttt{KEYS BAD})
+    pour un diagnostic visuel immédiat.
+\end{enumerate}
+
+\begin{explication}[Accusé de réception avec les nouvelles clés]
+Le capteur applique les nouvelles clés \emph{avant} d'envoyer l'ACK, de sorte que le message
+\texttt{KEYS\_OK} est lui-même signé avec les nouvelles clés. Le client Linux, qui tente de le déchiffrer
+avec les nouvelles clés, peut ainsi confirmer que le capteur les a bien adoptées. Si la rotation a
+échoué, le capteur renvoie \texttt{KEYS\_FAILED} signé avec les anciennes clés, ce qui déclenche
+le rollback automatique côté client.
+\end{explication}
+
+\subsection{\texttt{run()} - boucle principale}
+Après une phase d'initialisation (LoRa, écran OLED, affichage de démarrage), le capteur entre dans une
+boucle infinie qui, à chaque itération~:
+\begin{enumerate}
+    \item incrémente le compteur de mesures ;
+    \item construit la charge utile JSON avec \texttt{build\_payload()} ;
+    \item la sécurise avec \texttt{pack\_message()} (chiffrement AES-CBC puis HMAC-SHA1 puis base64,
+    détaillé au chapitre~\ref{chap:client}) ;
+    \item émet le paquet en LoRa avec \texttt{lora.println()} ;
+    \item met à jour l'écran OLED avec le début du paquet encodé ;
+    \item ouvre une fenêtre d'écoute de 6 secondes via \texttt{listen\_key\_update()} avant de recommencer.
+\end{enumerate}
+Le cycle complet (émission puis écoute) se répète donc indéfiniment, sans délai fixe supplémentaire : la
+période d'émission effective est d'environ 6 secondes, dictée par la durée de la fenêtre d'écoute des clés.
+
+% =====================================================
+\chapter{Module passerelle (ESP32 \#2)}
+\label{chap:passerelle}
+
+La passerelle est le seul nœud qui parle à la fois LoRa et MQTT : elle reçoit les trames radio du
+capteur, vérifie leur authenticité, puis les republie sur le broker. Elle joue donc le rôle de
+\textbf{client MQTT} pour le reste de l'infrastructure.
+
+\section{Fichier de configuration \texttt{config.py}}
+
+\begin{pycode}{Projet/firmware/passerelle/config.py}
+from machine import Pin, SoftSPI
+
+WIFI_SSID = 'INSA_RiSF'
+WIFI_PASSWORD = 'insa2026'
+
+MQTT_SERVER = 'serveur.iot.com'
+MQTT_PORT = 1883
+MQTT_USER = 'esp32'
+MQTT_PASSWORD = 'esp32'
+MQTT_DATA_TOPIC = b'LamBouba'
+MQTT_COMMAND_TOPIC = b'echange/command/passerelle'
+
+NODE_ID = 'passerelle1'
+AES_KEY = b'0123456789abcdef'
+HMAC_KEY = b'abcd'
+
+device_config = {
+    'miso': 19,
+    'mosi': 27,
+    'ss': 18,
+    'sck': 5,
+    'dio_0': 26,
+    'reset': 14,
+    'led': 25,
+}
+
+lora_parameters = {
+    'frequency': 868E6,
+    'tx_power_level': 2,
+    'signal_bandwidth': 125E3,
+    'spreading_factor': 11,
+    'coding_rate': 5,
+    'preamble_length': 8,
+    'implicit_header': True,
+    'sync_word': 0x12,
+    'enable_CRC': True,
+    'invert_IQ': False,
+}
+\end{pycode}
+
+Ce fichier reprend exactement la même structure que celui du capteur (chapitre~\ref{chap:capteur}), avec
+trois différences importantes :
+\begin{itemize}
+    \item \texttt{NODE\_ID} vaut \texttt{passerelle1} ;
+    \item \texttt{MQTT\_DATA\_TOPIC} (\texttt{LamBouba}) est ici réellement utilisé : c'est le topic sur
+    lequel la passerelle publie les données reçues du capteur ;
+    \item \texttt{MQTT\_COMMAND\_TOPIC} (\texttt{echange/command/passerelle}) est également utilisé : la
+    passerelle s'y abonne pour recevoir les commandes de mise à jour des clés envoyées par le client Linux.
+\end{itemize}
+
+\begin{explication}[Synchronisation des paramètres radio]
+Les valeurs de \texttt{lora\_parameters} sont \textbf{rigoureusement identiques} entre le capteur et la
+passerelle : même fréquence, même facteur d'étalement, même bande passante. C'est cette synchronisation
+qui permet aux deux modules SX127x de communiquer, le LoRa exigeant que l'émetteur et le récepteur
+partagent exactement la même configuration physique.
+\end{explication}
+
+\section{Programme principal \texttt{main.py}}
+
+\begin{pycode}{Projet/firmware/passerelle/main.py}
+import os
+os.chdir("/passerelle")
+from machine import Pin, SoftSPI
+from time import sleep
+import machine
+import network
+import ubinascii
+import ujson
+
+from config import *
+from security import *
+from sx127x import SX127x
+from oled import *
+from umqttsimple import MQTTClient
+
+
+mqtt_client = None
+no_check_mode = False
+
+
+def init_lora():
+    device_spi = SoftSPI(
+        baudrate=10000000,
+        polarity=0,
+        phase=0,
+        bits=8,
+        firstbit=SoftSPI.MSB,
+        sck=Pin(device_config['sck'], Pin.OUT, Pin.PULL_DOWN),
+        mosi=Pin(device_config['mosi'], Pin.OUT, Pin.PULL_UP),
+        miso=Pin(device_config['miso'], Pin.IN, Pin.PULL_UP)
+    )
+    modem = SX127x(
+        device_spi,
+        pins=device_config,
+        parameters=lora_parameters
+    )
+    # Force le modem en mode ecoute LoRa des le demarrage
+    modem.receive()
+    return modem
+
+
+def connect_wifi():
+    wlan = network.WLAN(network.STA_IF)
+
+    # Nettoyage preventif de l'etat interne de la puce Wi-Fi
+    if wlan.active():
+        wlan.active(False)
+        sleep(0.5)
+
+    wlan.active(True)
+    sleep(0.5)
+
+    if wlan.isconnected():
+        print('WiFi connected')
+        print(wlan.ifconfig())
+        return True
+
+    print('Connecting WiFi {}'.format(WIFI_SSID))
+
+    try:
+        wlan.connect(WIFI_SSID, WIFI_PASSWORD)
+    except OSError as e:
+        print("WiFi HW Error: {}. Retrying...".format(e))
+        machine.reset()
+
+    for _ in range(30):
+        if wlan.isconnected():
+            print('WiFi connected')
+            print(wlan.ifconfig())
+            return True
+        sleep(1)
+
+    print('WiFi connection failed')
+    return False
+
+
+def connect_mqtt():
+    global mqtt_client
+
+    client_id = ubinascii.hexlify(machine.unique_id())
+    mqtt_client = MQTTClient(
+        client_id=client_id,
+        server=MQTT_SERVER,
+        port=MQTT_PORT,
+        user=MQTT_USER,
+        password=MQTT_PASSWORD
+    )
+    mqtt_client.set_callback(on_mqtt_message)
+    mqtt_client.connect()
+    mqtt_client.subscribe(MQTT_COMMAND_TOPIC)
+    print('Connected to MQTT {}'.format(MQTT_SERVER))
+    return mqtt_client
+
+
+def publish_status(topic, event, ok, detail=''):
+    payload = ujson.dumps({
+        'node': NODE_ID,
+        'event': event,
+        'ok': ok,
+        'detail': detail
+    })
+    mqtt_client.publish(topic, payload)
+
+
+def set_screen(lines):
+    if 'screen' not in globals() or 'oled' not in globals():
+        return
+    for index, line in enumerate(lines):
+        screen[index] = line
+    write_screen(oled, screen)
+
+
+def send_key_update(command_packet):
+    lora.println(command_packet)
+    lora.receive()
+
+
+def on_mqtt_message(topic, msg):
+    global AES_KEY
+    global HMAC_KEY
+    global no_check_mode
+
+    actual_topic = topic.decode() if type(topic) == bytes else topic
+    config_topic = MQTT_COMMAND_TOPIC.decode() if type(MQTT_COMMAND_TOPIC) == bytes else MQTT_COMMAND_TOPIC
+
+    if actual_topic != config_topic:
+        return
+
+    # Commande NOCHECK (activer/desactiver la verification HMAC)
+    if msg.startswith(NOCHECK_PREFIX):
+        ok, state = verify_nocheck_command(msg, HMAC_KEY)
+        if ok:
+            no_check_mode = state
+            set_screen(['NO CHECK', 'ON' if state else 'OFF'])
+            mqtt_client.publish(MQTT_DATA_TOPIC, b"nocheck_updated")
+        return
+
+    print("[MQTT] Ordre de Key Update recu.")
+    ok, new_aes_key, new_hmac_key = verify_key_update(msg, HMAC_KEY)
+
+    if ok:
+        AES_KEY = new_aes_key
+        HMAC_KEY = new_hmac_key
+        mqtt_client.publish(MQTT_DATA_TOPIC, b"keys_updated")
+        if 'lora' in globals():
+            send_key_update(msg)
+            lora.receive()
+        set_screen(['KEYS OK', NODE_ID, 'updated'])
+        print("[REKEY] Cles mises a jour avec succes et relayees.")
+    else:
+        mqtt_client.publish(MQTT_DATA_TOPIC, b"keys_rejected")
+        set_screen(['KEYS BAD', NODE_ID])
+        print("[REKEY] Echec : HMAC invalide.")
+def publish_lora_message(node_id, plaintext, rssi, snr, secure):
+    try:
+        data_str = plaintext.decode() if type(plaintext) == bytes else str(plaintext)
+    except Exception:
+        data_str = str(plaintext)
+
+    payload = ujson.dumps({
+        'node': node_id,
+        'data': data_str,
+        'rssi': rssi,
+        'snr': snr,
+        'secure': secure
+    })
+    mqtt_client.publish(MQTT_DATA_TOPIC, payload)
+
+
+def run():
+    global lora
+    global oled
+    global screen
+
+    if not connect_wifi():
+        return
+
+    connect_mqtt()
+    lora = init_lora()
+    oled, screen = init_oled()
+
+    screen[0] = 'Passerelle'
+    screen[1] = NODE_ID
+    screen[2] = 'MQTT + LoRa'
+    write_screen(oled, screen)
+
+    while True:
+        try:
+            mqtt_client.check_msg()
+        except OSError:
+            connect_mqtt()
+
+        if lora.received_packet():
+            packet = lora.read_payload()
+            rssi = lora.packet_rssi()
+            snr = lora.packet_snr()
+            mqtt_client.publish(MQTT_DATA_TOPIC, packet)
+
+            if no_check_mode:
+                screen[0] = 'RX RAW'
+                screen[1] = packet[:16].decode() if type(packet) == bytes else packet[:16]
+                screen[2] = 'RSSI {}'.format(rssi)
+                screen[3] = 'SNR {}'.format(snr)
+                screen[4] = 'NO-CHK'
+            else:
+                ok, node_id, plaintext = unpack_message(packet, AES_KEY, HMAC_KEY)
+                if ok:
+                    screen[0] = 'RX {}'.format(node_id)
+                    screen[1] = plaintext.decode()[:16]
+                    screen[2] = 'RSSI {}'.format(rssi)
+                    screen[3] = 'SNR {}'.format(snr)
+                    screen[4] = 'OK'
+                else:
+                    screen[0] = 'RX BAD'
+                    screen[4] = 'HMAC ERR'
+            write_screen(oled, screen)
+
+            lora.receive()
+
+        sleep(0.1)
+
+
+if __name__ == '__main__':
+    run()
+\end{pycode}
+
+\subsection{\texttt{init\_lora()} - une différence clé avec le capteur}
+La configuration matérielle est identique à celle du capteur, mais \texttt{init\_lora()} appelle ici
+\texttt{modem.receive()} immédiatement après la construction du pilote. La passerelle n'émet jamais de
+mesure : son rôle est d'écouter le canal LoRa en continu, elle doit donc rester armée en réception dès
+le démarrage.
+
+\subsection{\texttt{connect\_wifi()} - connexion robuste}
+Cette fonction va au-delà d'un simple \texttt{wlan.connect()} :
+\begin{itemize}
+    \item elle désactive puis réactive l'interface Wi-Fi (\texttt{wlan.active(False)} puis
+    \texttt{True}) afin de repartir d'un état propre, utile après un \emph{soft-reset} de l'ESP32 ;
+    \item elle court-circuite la tentative de connexion si le module est déjà connecté ;
+    \item l'appel à \texttt{wlan.connect()} est protégé par un \texttt{try/except OSError} : certaines
+    puces Wi-Fi ESP32 lèvent une erreur matérielle transitoire, à laquelle on répond par un
+    \texttt{machine.reset()} complet plutôt que de rester bloqué ;
+    \item une boucle de 30 tentatives, espacées d'une seconde, attend la connexion avant d'abandonner et
+    de renvoyer \texttt{False}.
+\end{itemize}
+
+\subsection{\texttt{connect\_mqtt()} - identité et abonnement}
+L'identifiant de connexion MQTT (\texttt{client\_id}) est dérivé de \texttt{machine.unique\_id()}, un
+identifiant matériel propre à chaque puce ESP32, converti en chaîne hexadécimale. Cela garantit un
+\texttt{client\_id} unique même si plusieurs passerelles partagent le même \texttt{config.py} : un broker
+MQTT déconnecte en effet le premier client dès qu'un second se reconnecte avec le même identifiant.
+La bibliothèque \texttt{umqttsimple} (un client MQTT minimaliste pour MicroPython) gère ensuite la
+connexion TCP, l'authentification par utilisateur/mot de passe, puis l'abonnement immédiat au topic de
+commande \texttt{MQTT\_COMMAND\_TOPIC}.
+
+\subsection{\texttt{publish\_status()} et \texttt{set\_screen()} - fonctions utilitaires}
+\texttt{publish\_status()} encapsule la publication d'un évènement de diagnostic au format JSON.
+\texttt{set\_screen()} met à jour l'écran OLED de façon défensive : elle vérifie d'abord que les variables
+globales \texttt{oled} et \texttt{screen} existent avant d'écrire, ce qui évite un plantage si la fonction
+est appelée (par exemple depuis le callback MQTT) avant la fin de l'initialisation dans \texttt{run()}.
+
+\subsection{\texttt{on\_mqtt\_message()} - traitement des commandes}
+Cette fonction est enregistrée comme \emph{callback} et déclenchée par \texttt{umqttsimple} chaque fois
+qu'un message arrive sur un topic souscrit. Elle gère deux types de commandes :
+
+\paragraph{Commandes de mise à jour des clés (\texttt{KEYUPDATE})}
+\begin{enumerate}
+    \item elle compare le topic reçu au topic de commande attendu, en normalisant les deux côtés en
+    chaînes de caractères (\texttt{topic} est parfois transmis en \texttt{bytes} par la bibliothèque MQTT) ;
+    elle ignore silencieusement tout message qui ne concerne pas ce topic ;
+    \item elle délègue la vérification cryptographique à \texttt{verify\_key\_update()} définie dans
+    \texttt{security.py}, qui recalcule le HMAC de la commande avec la clé HMAC \textbf{actuelle} et la
+    compare en temps constant ;
+    \item en cas de succès : les nouvelles clés sont appliquées immédiatement (\texttt{global AES\_KEY},
+    \texttt{global HMAC\_KEY}), un accusé \texttt{keys\_updated} est publié sur le topic de données, puis
+    la commande est \textbf{relayée telle quelle vers le capteur par LoRa} via \texttt{send\_key\_update()} ;
+    \item en cas d'échec, un accusé \texttt{keys\_rejected} est publié et les clés en cours
+    \textbf{ne sont pas modifiées} : une commande invalide ne peut pas interrompre le service.
+\end{enumerate}
+
+\paragraph{Commandes de mode inspection (\texttt{NOCHECK})}
+La passerelle reconnaît également les commandes préfixées par \texttt{NOCHECK\_PREFIX}. Leur HMAC est
+d'abord vérifié par \texttt{verify\_nocheck\_command()} : si la signature est valide, la variable globale
+\texttt{no\_check\_mode} est basculée à \texttt{True} ou \texttt{False} selon l'état demandé, et un
+\texttt{nocheck\_updated} est publié sur le topic de données. En mode inspection activé, la boucle
+\texttt{run()} affiche les trames reçues sans les vérifier (étiquette \texttt{NO-CHK} sur l'OLED), ce
+qui permet d'observer le trafic brut pendant les tests sans modifier les clés.
+
+\begin{explication}[Chaîne de confiance bout-en-bout]
+Le client Linux signe la commande avec la clé HMAC qu'il croit être la clé courante. La passerelle la
+vérifie avec \emph{sa propre} clé HMAC courante avant de l'appliquer, puis la relaie sans la modifier.
+Le capteur effectue à son tour la même vérification avec sa propre clé courante. Une commande n'est donc
+acceptée par un nœud que s'il partageait déjà la bonne clé HMAC au moment de la recevoir - ce qui
+empêche un tiers ne connaissant pas la clé en cours de forcer une rotation.
+\end{explication}
+
+\subsection{\texttt{publish\_lora\_message()} - publication MQTT enrichie}
+La fonction \texttt{publish\_lora\_message()} construit un message JSON structuré avant publication sur
+le broker. Ce JSON regroupe l'identifiant du nœud émetteur, les données utiles déchiffrées, le niveau de
+signal RSSI, le rapport signal/bruit SNR et un indicateur booléen \texttt{secure} précisant si le paquet
+a bien passé la vérification HMAC. Cette structure facilite le traitement côté abonné MQTT : un client
+peut filtrer immédiatement les messages sur le champ \texttt{secure}, et exploiter RSSI/SNR pour surveiller
+la qualité du lien radio sans outillage supplémentaire.
+
+\subsection{\texttt{run()} - boucle principale}
+Après connexion Wi-Fi (avec retour anticipé si elle échoue), connexion MQTT puis initialisation LoRa et
+OLED, la passerelle entre dans une boucle infinie qui, à chaque itération :
+\begin{enumerate}
+    \item appelle \texttt{mqtt\_client.check\_msg()}, qui interroge le socket MQTT de façon non
+    bloquante et déclenche \texttt{on\_mqtt\_message()} si un message est en attente ; une
+    \texttt{OSError} (connexion TCP perdue) entraîne une reconnexion immédiate via \texttt{connect\_mqtt()} ;
+    \item vérifie si une trame LoRa est disponible (\texttt{lora.received\_packet()}) ; si oui, elle lit
+    le paquet, le RSSI et le SNR, publie le paquet brut sur MQTT, puis tente de le déchiffrer pour
+    actualiser l'écran OLED ;
+    \item réarme systématiquement le module en réception avec \texttt{lora.receive()} - une étape
+    \textbf{critique} : sans cet appel, le SX127x resterait dans l'état « réception terminée » et
+    ignorerait toute trame suivante ;
+    \item attend \SI{100}{\milli\second} (\texttt{sleep(0.1)}) avant de recommencer, un compromis entre
+    réactivité et charge CPU.
+\end{enumerate}
+
+% =====================================================
+\chapter{Client Python - supervision et sécurité}
+\label{chap:client}
+
+Le client Linux est structuré en \textbf{package Python} (\texttt{Projet/mqtt\_client/}) composé de
+quatre fichiers aux responsabilités distinctes :
+\begin{itemize}
+    \item \texttt{config.py} : toutes les constantes (broker, topics, clés par défaut, préfixes de protocole) ;
+    \item \texttt{security.py} : les primitives cryptographiques (AES-CBC, HMAC-SHA1, pack/unpack, rotation des clés, commande nocheck) ;
+    \item \texttt{shell.py} : la classe \texttt{MqttShell} (interface interactive \texttt{cmd.Cmd}) et la fonction \texttt{print\_async()} ;
+    \item \texttt{main.py} : le point d'entrée, la connexion MQTT, le traitement des messages et la boucle principale.
+\end{itemize}
+
+Cette séparation permet de réutiliser chaque module indépendamment et d'étendre le client sans toucher au
+code cryptographique. Le client réimplémente côté CPython les mêmes primitives que \texttt{security.py}
+côté MicroPython, afin que les messages chiffrés sur l'ESP32 puissent être vérifiés sur Linux et inversement.
+
+\section{Constantes : \texttt{config.py}}
+
+\begin{pycode}{Projet/mqtt\_client/config.py}
+BLOCK_SIZE = 16
+MESSAGE_PREFIX = b'INSARISF1'
+KEYUPDATE_PREFIX = b'KEYUPDATE'
+NOCHECK_PREFIX = b'NOCHECK'
+DEFAULT_BROKER = 'serveur.iot.com'
+DEFAULT_PORT = 1883
+DEFAULT_USER = 'esp32'
+DEFAULT_PASSWORD = 'esp32'
+DEFAULT_DATA_TOPIC = 'LamBouba'
+DEFAULT_COMMAND_TOPIC = 'echange/command/passerelle'
+DEFAULT_AES_KEY = b'0123456789abcdef'
+DEFAULT_HMAC_KEY = b'abcd'
+\end{pycode}
+
+Ce fichier centralise tous les paramètres modifiables en un seul endroit. Le préfixe \texttt{NOCHECK\_PREFIX}
+identifie les commandes de mode inspection envoyées à la passerelle. Les constantes \texttt{MESSAGE\_PREFIX}
+et \texttt{KEYUPDATE\_PREFIX} doivent être strictement identiques à celles du firmware, car elles font
+partie intégrante du calcul HMAC.
+
+\section{Primitives cryptographiques : \texttt{security.py}}
+
+\begin{pycode}{Projet/mqtt\_client/security.py - bourrage et HMAC}
+def pad(data):
+    padding = BLOCK_SIZE - (len(data) % BLOCK_SIZE)
+    return data + bytes([padding]) * padding
+
+def unpad(data):
+    padding = data[-1]
+    if padding < 1 or padding > BLOCK_SIZE:
+        raise ValueError('bad padding')
+    return data[:-padding]
+
+def hmac_sha1(key, message):
+    return hmac.new(key, message, hashlib.sha1).digest()
+
+def equal_bytes(a, b):
+    return hmac.compare_digest(a, b)
+\end{pycode}
+
+\begin{itemize}
+    \item \texttt{pad()}/\texttt{unpad()} implémentent un bourrage de type PKCS\#7 : on ajoute toujours
+    entre 1 et 16 octets, chacun valant le nombre d'octets ajoutés, ce qui permet de retirer le bourrage
+    sans ambiguïté en lisant le dernier octet ;
+    \item \texttt{hmac\_sha1()} encapsule \texttt{hmac.new(...)} de la bibliothèque standard (RFC 2104) ;
+    \item \texttt{equal\_bytes()} s'appuie sur \texttt{hmac.compare\_digest()}, une comparaison en
+    \textbf{temps constant} pour résister aux attaques temporelles. Cette précaution est reprise
+    manuellement dans le firmware, MicroPython ne fournissant pas \texttt{hmac.compare\_digest}.
+\end{itemize}
+
+\begin{pycode}{Projet/mqtt\_client/security.py - chiffrement AES-CBC}
+def encrypt_aes_cbc(key, plaintext):
+    nonce = os.urandom(BLOCK_SIZE)
+    cipher = Cipher(algorithms.AES(key), modes.CBC(nonce), backend=default_backend())
+    encryptor = cipher.encryptor()
+    ciphertext = encryptor.update(pad(plaintext)) + encryptor.finalize()
+    return nonce + ciphertext
+
+def decrypt_aes_cbc(key, data):
+    nonce = data[:BLOCK_SIZE]
+    ciphertext = data[BLOCK_SIZE:]
+    cipher = Cipher(algorithms.AES(key), modes.CBC(nonce), backend=default_backend())
+    decryptor = cipher.decryptor()
+    return unpad(decryptor.update(ciphertext) + decryptor.finalize())
+\end{pycode}
+
+Un IV (\texttt{nonce}) de 16 octets aléatoire est généré par \texttt{os.urandom()} à chaque chiffrement
+et préfixé au texte chiffré. Deux messages identiques successifs produisent donc des textes chiffrés
+différents, empêchant un observateur passif de repérer les répétitions dans le trafic.
+
+\section{Empaquetage, messages et rotation des clés}
+
+\begin{pycode}{Projet/mqtt\_client/security.py - pack/unpack}
+def pack_message(node_id, plaintext, aes_key, hmac_key):
+    encrypted = encrypt_aes_cbc(aes_key, plaintext)
+    mac_data = MESSAGE_PREFIX + b'|' + node_id.encode() + b'|' + encrypted
+    mac = hmac_sha1(hmac_key, mac_data)
+    packet = node_id.encode() + b'|' + encrypted + b'|' + mac
+    return base64.b64encode(packet).decode()
+
+def unpack_message(packet, aes_key, hmac_key):
+    try:
+        raw = base64.b64decode(packet)
+        node_id_bytes, rest = raw.split(b'|', 1)
+        node_id = node_id_bytes.decode()
+        encrypted, mac = rest.rsplit(b'|', 1)
+        mac_data = MESSAGE_PREFIX + b'|' + node_id_bytes + b'|' + encrypted
+        expected = hmac_sha1(hmac_key, mac_data)
+        if not equal_bytes(mac, expected):
+            return False, node_id, b''
+        plaintext = decrypt_aes_cbc(aes_key, encrypted)
+        return True, node_id, plaintext
+    except Exception:
+        return False, '', b''
+\end{pycode}
+
+\texttt{unpack\_message()} vérifie le HMAC \textbf{avant} de déchiffrer (approche \emph{verify-then-decrypt}).
+Le \texttt{rsplit(b'|', 1)} pour extraire le HMAC (dernier champ) et le \texttt{split(b'|', 1)} pour
+extraire l'identifiant (premier champ) tolèrent un \texttt{node\_id} contenant accidentellement le séparateur.
+
+\begin{validation}[Vérification HMAC avant déchiffrement]
+Vérifier le HMAC avant de déchiffrer empêche un oracle de padding : si l'on déchiffrait d'abord, un
+message d'erreur de bourrage pourrait renseigner un attaquant sur le contenu du texte chiffré. Seuls les
+paquets signés avec la bonne clé HMAC sont déchiffrés, sur toute la chaîne.
+\end{validation}
+
+\begin{pycode}{Projet/mqtt\_client/security.py - rotation et nocheck}
+def build_key_update(new_aes_key, new_hmac_key, current_hmac_key):
+    nonce = os.urandom(8)
+    command = KEYUPDATE_PREFIX + b'|' + nonce + b'|' + new_aes_key.hex().encode() + b'|' + new_hmac_key.hex().encode()
+    mac = hmac_sha1(current_hmac_key, command)
+    return command + b'|' + mac.hex().encode()
+
+def build_nocheck_command(state_bool, current_hmac_key):
+    nonce = os.urandom(8)
+    state = b'1' if state_bool else b'0'
+    command = NOCHECK_PREFIX + b'|' + nonce + b'|' + state
+    mac = hmac_sha1(current_hmac_key, command)
+    return command + b'|' + mac.hex().encode()
+\end{pycode}
+
+Le format de la commande de rotation est :
+\texttt{KEYUPDATE | nonce(8 octets) | nouvelle\_clé\_AES(hex) | nouvelle\_clé\_HMAC(hex) | HMAC(commande)}.
+Le HMAC est calculé avec la clé HMAC \textbf{courante}, ce qui garantit que seul le détenteur des secrets
+actuels peut autoriser une rotation.
+
+\texttt{build\_nocheck\_command()} construit la commande de bascule du mode inspection, également signée
+avec la clé HMAC courante. Un nonce de 8 octets garantit que deux commandes successives vers le même état
+produisent des paquets différents.
+
+\begin{explication}[Rôle du nonce dans les commandes]
+Le nonce aléatoire de 8 octets empêche un observateur de reconnaître une commande à sa simple structure
+binaire, et rend impossible la réutilisation d'une commande interceptée.
+\end{explication}
+
+\section{Interface interactive : \texttt{shell.py}}
+
+\begin{pycode}{Projet/mqtt\_client/shell.py - MqttShell (extrait)}
+class MqttShell(cmd.Cmd):
+    intro = "Client MQTT/LoRa securise interactif."
+    prompt = "(mqtt) "
+
+    def do_listen(self, arg):
+        self.client.subscribe(self.args.data_topic)
+        self.listening = True
+
+    def do_update_keys(self, arg):
+        # Publie la commande de rotation et active le mode double-decodage
+        new_aes_key, new_hmac_key = [a.encode() for a in arg.split()]
+        command = build_key_update(new_aes_key, new_hmac_key, self.args.hmac_key)
+        self.client.publish(self.args.command_topic, command)
+        self.args.pending_update = True
+        self.args.fallback_keys = (self.args.aes_key, self.args.hmac_key)
+        self.args.aes_key = new_aes_key
+        self.args.hmac_key = new_hmac_key
+
+    def do_nocheck(self, arg):
+        state = (arg.strip().lower() == 'on')
+        command = build_nocheck_command(state, self.args.hmac_key)
+        self.client.publish(self.args.command_topic, command)
+
+    def do_status(self, arg):
+        print(f"Broker: {self.args.broker}:{self.args.port}")
+        print(f"Cle AES actuelle: {self.args.aes_key.decode()}")
+        print(f"Cle HMAC actuelle: {self.args.hmac_key.decode()}")
+\end{pycode}
+
+La classe \texttt{MqttShell} hérite de \texttt{cmd.Cmd}, le module de la bibliothèque standard Python
+pour les interfaces en ligne de commande interactives. Chaque méthode préfixée \texttt{do\_} définit
+automatiquement une commande. La boucle \texttt{cmdloop()} gère la lecture, la complétion par tabulation
+et l'aide automatique depuis les docstrings. Les commandes disponibles sont :
+
+\begin{itemize}
+    \item \texttt{listen} / \texttt{stop\_listen} : s'abonner ou se désabonner du topic de données ;
+    \item \texttt{update\_keys <aes> <hmac>} : lancer une rotation de clés et activer le mode double-décodage ;
+    \item \texttt{nocheck on|off} : activer ou désactiver la vérification HMAC sur la passerelle ;
+    \item \texttt{publish <node\_id> <message>} : publier un message de test sécurisé ;
+    \item \texttt{status} : afficher broker, topic et clés actives ;
+    \item \texttt{quit} / \texttt{exit} : fermer le client.
+\end{itemize}
+
+La fonction \texttt{print\_async()} assure un affichage non-intrusif des messages MQTT reçus en arrière-plan :
+elle efface la ligne courante, affiche le message, puis réaffiche le prompt et le contenu en cours de saisie
+via \texttt{readline.get\_line\_buffer()}, de sorte que les notifications entrantes n'interrompent pas la
+frappe d'une commande.
+
+\section{Point d'entrée : \texttt{main.py}}
+
+\begin{pycode}{Projet/mqtt\_client/main.py - on\_message avec double-decodage}
+def on_message(client, userdata, message, args, shell=None):
+    raw_payload = message.payload.decode()
+    SYSTEM_MESSAGES = ("keys_updated", "keys_rejected", "nocheck_updated")
+    if raw_payload in SYSTEM_MESSAGES:
+        print_async(f'\n[SYSTEM] Passerelle: {raw_payload}', shell)
+        return
+
+    pending = getattr(args, 'pending_update', False)
+    valid, node_id, plaintext = unpack_message(message.payload, args.aes_key, args.hmac_key)
+
+    if pending and not valid:
+        # Essai avec les anciennes cles (Trial Decryption)
+        fb_aes, fb_hmac = args.fallback_keys
+        fb_valid, fb_node_id, fb_plaintext = unpack_message(message.payload, fb_aes, fb_hmac)
+        if fb_valid:
+            args.message_count += 1
+            data = fb_plaintext.decode()
+            if data == "KEYS_FAILED" or args.message_count >= 2:
+                # Rollback : restaurer les anciennes cles localement et republier
+                args.aes_key, args.hmac_key = fb_aes, fb_hmac
+                args.pending_update = False
+                command = build_key_update(fb_aes, fb_hmac, args.active_keys[1])
+                client.publish(args.command_topic, command)
+    elif pending and valid:
+        if plaintext.decode() == "KEYS_OK":
+            args.pending_update = False  # Rotation confirmee
+    elif valid:
+        print_async(f'\n[OK] {node_id} {plaintext.decode()}', shell)
+    else:
+        print_async(f'\n[BAD] message rejected\nraw: {raw_payload}', shell)
+\end{pycode}
+
+\subsection{\texttt{on\_message()} - traitement et rollback automatique}
+Cette fonction est le cœur du traitement des messages MQTT côté client :
+\begin{enumerate}
+    \item les messages système de la passerelle (\texttt{keys\_updated}, \texttt{keys\_rejected},
+    \texttt{nocheck\_updated}) sont affichés directement sans tentative de déchiffrement ;
+    \item hors rotation en attente, \texttt{unpack\_message()} est appelé avec les clés courantes ;
+    \item en mode \texttt{pending\_update} (rotation demandée mais pas encore confirmée), un
+    \textbf{double-décodage} est appliqué : on essaie d'abord les nouvelles clés, puis les anciennes
+    (\texttt{fallback\_keys}) si les nouvelles échouent ;
+    \item si deux messages consécutifs sont déchiffrables uniquement avec les anciennes clés, ou si le
+    capteur répond \texttt{KEYS\_FAILED}, le client déclenche un \textbf{rollback automatique} : il
+    restaure ses clés localement et publie une nouvelle commande de rotation vers les anciennes valeurs,
+    à destination de la passerelle ;
+    \item si le capteur répond \texttt{KEYS\_OK} déchiffrable avec les nouvelles clés, la rotation est
+    confirmée et \texttt{pending\_update} est désactivé.
+\end{enumerate}
+
+\begin{pycode}{Projet/mqtt\_client/main.py - boucle principale}
+def main():
+    args = parser.parse_args()
+    client = make_mqtt_client(args)
+    shell = MqttShell(args, client)
+    client.on_message = lambda c, u, m: on_message(c, u, m, args, shell)
+    client.loop_start()   # Thread MQTT en arriere-plan
+    shell.cmdloop()       # Boucle interactive au premier plan
+    client.loop_stop()
+    client.disconnect()
+\end{pycode}
+
+\subsection{Architecture asynchrone}
+La boucle MQTT est lancée en \textbf{arrière-plan} via \texttt{client.loop\_start()}, qui crée un thread
+dédié. Le fil principal est ainsi libre pour la boucle interactive \texttt{shell.cmdloop()}. Les deux
+boucles s'exécutent en parallèle : le shell attend la saisie pendant que le thread MQTT reçoit et traite
+les messages, en appelant \texttt{print\_async()} pour afficher les notifications sans perturber le prompt.
+
+\begin{explication}[Format des clés sur la ligne de commande]
+\texttt{parse\_bytes()} convertit un argument de ligne de commande directement en octets ASCII
+(\texttt{value.encode()}) : taper \texttt{--aes-key 0123456789abcdef} produit les 16 octets de la clé
+attendue, cohérents avec \texttt{DEFAULT\_AES\_KEY = b'0123456789abcdef'} dans \texttt{config.py}.
+Pour les nouvelles clés transmises par \texttt{update\_keys}, \texttt{build\_key\_update()} les encode en
+hexadécimal (\texttt{new\_aes\_key.hex()}) pour les transporter sans ambiguïté de séparateur.
+\end{explication}
+
+
+% =====================================================
+\chapter{Sécurisation des échanges}
+\label{chap:securite}
+
+\section{Chiffrement AES des données}
+Le chiffrement est réalisé en AES-CBC avec une clé de 16 octets. Chaque paquet contient un nonce de
+16 octets utilisé comme IV AES. Ce nonce est aléatoire, ce qui évite que deux messages identiques
+produisent le même texte chiffré.
+
+\section{Authentification et intégrité des messages}
+L'intégrité et l'origine du message sont garanties par un HMAC-SHA1. Le HMAC est calculé sur le préfixe
+\texttt{INSARISF1}, l'identifiant du nœud et la partie chiffrée. Cette construction empêche qu'un
+attaquant modifie le message sans connaître la clé HMAC.
+
+\section{Protocole de mise à jour sécurisée des clés}
+Le client Linux peut publier une commande de mise à jour des clés sur le topic de commande. Cette
+commande contient une nouvelle clé AES, une nouvelle clé HMAC et un HMAC calculé avec la clé HMAC
+actuelle. La passerelle vérifie la commande, met à jour ses clés puis la transmet au capteur par LoRa.
+Le capteur vérifie à son tour la commande avant d'appliquer les nouvelles clés.
+
+\section{Analyse de sécurité}
+\begin{validation}[Ce que le protocole protège]
+Le chiffrement AES-CBC garantit la confidentialité face à une écoute passive du canal radio ou MQTT, et
+le HMAC-SHA1 garantit qu'un message modifié ou forgé sans connaître la clé sera détecté et rejeté.
+\end{validation}
+
+\begin{validation}[Vérification HMAC avant déchiffrement]
+Le protocole vérifie systématiquement le HMAC \textbf{avant} de déchiffrer : cette approche
+\emph{verify-then-decrypt} évite qu'un attaquant exploite les erreurs de déchiffrement pour en déduire
+des informations sur le contenu (oracle de padding). Seuls les paquets signés avec la bonne clé
+HMAC sont déchiffrés, sur l'ensemble de la chaîne : radio LoRa, broker MQTT, et client Linux.
+\end{validation}
+
+% =====================================================
+\chapter{Résultats expérimentaux}
+\label{chap:resultats}
+
+\section{Mise en service de la chaîne complète}
+Le client Linux interactif (\texttt{mqtt\_client/main.py}) a été lancé en parallèle des deux firmwares
+ESP32, chacun affichant son propre journal sur sa liaison série dans un panneau de terminal dédié. La
+figure~\ref{fig:capture-demarrage} montre cet environnement de test : à gauche le journal du capteur
+(émission \texttt{[TX]} d'un paquet puis ouverture de la fenêtre d'écoute des clés), à droite celui de la
+passerelle (réception \texttt{[RX]}, niveau RSSI et SNR), et en haut le client Python, qui liste au
+démarrage l'ensemble des commandes disponibles : \texttt{listen}, \texttt{update\_keys}, \texttt{nocheck},
+\texttt{publish}, \texttt{status}, \texttt{stop\_listen}.
+
+\section{Réception et déchiffrement des messages sécurisés}
+La commande \texttt{listen} place le client en écoute sur le topic \texttt{LamBouba}. Chaque trame brute
+reçue (\texttt{MQTT raw}) est vérifiée puis déchiffrée : en cas de succès, le client affiche
+\texttt{[OK] capteur1} suivi du contenu JSON en clair (température, batterie, compteur). La
+figure~\ref{fig:capture-listen} illustre cette réception pour deux messages consécutifs, avec une
+température croissante d'une mesure à l'autre, cohérente avec la rampe simulée par \texttt{build\_payload()}.
+
+\section{Mise à jour des clés}
+La commande \texttt{update\_keys} publie une commande de rotation sur le topic
+\texttt{echange/command/passerelle}. La passerelle applique les nouvelles clés puis relaie la commande au
+capteur par LoRa, qui confirme à son tour la mise à jour. Le client affiche alors
+\texttt{[SYSTEM] Passerelle: keys\_updated} puis \texttt{[CONFIRMED] Mise à jour des clés validée par le
+capteur}, comme le montre la figure~\ref{fig:capture-updatekeys}. La commande \texttt{status} permet
+ensuite de relire les clés AES et HMAC actuellement actives sur la passerelle.
+
+\section{Rejet d'un message altéré}
+Lorsqu'un message ne passe pas la vérification HMAC, le client l'identifie avec
+\texttt{[BAD] message rejected} et affiche la trame brute reçue, sans que cela n'interrompe la réception
+des messages valides suivants : la figure~\ref{fig:capture-rejet} montre un message rejeté entouré de deux
+messages acceptés normalement, illustrant que la vérification s'effectue indépendamment pour chaque trame.
+
+\section{Désactivation de la vérification}
+La commande \texttt{nocheck on} permet de désactiver volontairement la vérification HMAC côté passerelle,
+afin d'observer la réception des trames en clair (étiquetées \texttt{NO-CHK} sur l'écran de la passerelle
+et publiées en MQTT sous forme \texttt{RX RAW}). La figure~\ref{fig:capture-nocheck} illustre ce mode de
+diagnostic, utile pour inspecter le contenu brut d'un paquet pendant les tests.
+
+\section{Rotation avec mauvaises clés et rollback automatique}
+La figure~\ref{fig:capture-rollback} illustre le comportement du système lorsqu'une rotation échoue côté
+capteur : la passerelle relaie la nouvelle clé proposée, mais le capteur la rejette
+(\texttt{[BAD\_KEYS] (Old Keys Valid)}) et continue de signer ses messages avec son ancienne clé HMAC. Le
+client journalise un \texttt{[ROLLBACK]} et la passerelle revient à son tour aux clés précédentes, ce qui
+rétablit immédiatement la cohérence entre les trois composants sans interrompre le flux de mesures.
+
+\section{Autres outils de test disponibles}
+En complément du mode interactif, le projet fournit des outils en ligne de commande pour des tests rapides
+ou scriptés. Un test direct du broker, indépendant du chiffrement, peut être réalisé avec
+\texttt{mosquitto\_pub} :
+\begin{shellcode}{test de publication MQTT}
+mosquitto_pub -h serveur.iot.com -u esp32 -P esp32 -t LamBouba -m coucou
+\end{shellcode}
+La sous-commande \texttt{publish-test} de \texttt{mqtt\_client/main.py} permet de publier un unique paquet
+sécurisé sans passer par le capteur LoRa :
+\begin{shellcode}{publish-test}
+python3 -m mqtt_client --broker serveur.iot.com \
+  --mqtt-user esp32 --mqtt-password esp32 \
+  --aes-key 0123456789abcdef --hmac-key abcd \
+  publish capteur1 coucou
+\end{shellcode}
+
+\section{Synthèse}
+L'ensemble de ces tests couvre le cycle de vie complet du protocole : émission et réception normales,
+rotation de clés réussie, rejet ciblé d'un message altéré au sein d'un flux par ailleurs valide, mode de
+diagnostic sans vérification, et reprise automatique après une rotation de clés défaillante. Le système se
+comporte de façon cohérente sur l'ensemble de ces scénarios.
+
+% =====================================================
+\chapter{Conclusion}
+\label{chap:conclusion}
+
+Le projet permet de mettre en œuvre une chaîne complète IoT LoRa/MQTT avec vérification cryptographique
+des messages. Le capteur produit des mesures, la passerelle les transporte vers MQTT et le client Linux
+vérifie les messages reçus. Les mécanismes AES-CBC et HMAC-SHA1 assurent respectivement la confidentialité
+et l'intégrité des échanges.
+
+Les améliorations principales seraient l'ajout d'un compteur anti-rejeu, le remplacement d'AES-CBC par
+AES-GCM et l'ajout d'une journalisation plus détaillée côté passerelle. Le script Bash de publication
+permet désormais de générer et d'envoyer automatiquement un flot de paquets sécurisés avec des messages
+différents, ce qui facilite les tests de réception et de robustesse.
+
+% =====================================================
+\appendix
+\chapter{Annexes}
+
+\section{Code source complet}
+Les fichiers principaux du projet sont :
+\begin{itemize}
+    \item \texttt{Projet/firmware/capteur/main.py}, \texttt{config.py}, \texttt{security.py} ;
+    \item \texttt{Projet/firmware/passerelle/main.py}, \texttt{config.py}, \texttt{security.py} ;
+    \item \texttt{Projet/mqtt\_client/main.py}, \texttt{config.py}, \texttt{security.py}, \texttt{shell.py}.
+\end{itemize}
+
+\section{Schémas de câblage}
+Les ESP32 sont câblés aux modules LoRa SX127x en SPI. Les broches utilisées sont définies dans les
+fichiers \texttt{config.py} du capteur et de la passerelle. Les deux modules doivent partager la masse,
+l'alimentation, SCK, MOSI, MISO, NSS, RST et DIO0.
+
+\section{Captures d'écran}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{captures/demo1_demarrage_tx_rx.png}
+    \caption{Démarrage du client interactif et premier échange capteur~$\rightarrow$~passerelle (terminaux MicroPython à gauche et à droite, client Python en haut)}
+    \label{fig:capture-demarrage}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{captures/demo2_listen_securise.png}
+    \caption{Mode \texttt{listen} - réception, vérification HMAC et déchiffrement de messages sécurisés (\texttt{[OK] capteur1 \{...\}})}
+    \label{fig:capture-listen}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{captures/demo3_update_keys_succes.png}
+    \caption{Commande \texttt{update\_keys} - rotation des clés relayée à la passerelle puis confirmée par le capteur (\texttt{[CONFIRMED]})}
+    \label{fig:capture-updatekeys}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{captures/demo4_message_rejete.png}
+    \caption{Rejet d'un message altéré au sein du flux (\texttt{[BAD] message rejected}), les messages suivants correctement signés continuant d'être acceptés}
+    \label{fig:capture-rejet}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{captures/demo5_nocheck_on.png}
+    \caption{Commande \texttt{nocheck on} - désactivation volontaire de la vérification HMAC côté passerelle pour observer la réception brute (\texttt{NO-CHK})}
+    \label{fig:capture-nocheck}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{captures/demo6_rollback_status.png}
+    \caption{Rotation de clés avec un mauvais HMAC (\texttt{[BAD\_KEYS]}), \texttt{[ROLLBACK]} automatique vers les clés précédentes, puis commande \texttt{status} récapitulant l'état courant de la passerelle}
+    \label{fig:capture-rollback}
+\end{figure}
+
+\end{document}
